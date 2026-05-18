@@ -267,6 +267,22 @@ Format par entrée :
   - SESSION_LOG.md et CODER_SUMMARY.md mis a jour.
   - Bloquants humain restants inchanges : (1) GitHub Pages verification navigateur ; (2) Suppression 4 branches orphelines (push --delete bloque sandbox 403).
 
+## 2026-05-18 — Weekly Strategic Review (manager)
+- Objectif: Revue strategique hebdomadaire — validation Sprint 4 setup, priorisation semaine
+- Statut: Review completee
+- Tests: N/A
+- Notes:
+  - **Post-deadline (18 jours).** v1.0 publiee le 29/04, v1.1 (infra + polish) livree en Sprint 3.
+  - Sprint 3 clos (3/5 DoD livres, 2 bloquants humain — GitHub Pages + branch cleanup). Archive dans memory/sprints/sprint-03/.
+  - **Sprint 4 demarre demain (19/05) : "Features + Revenue Prep"** (19-25 mai).
+  - Backlog Sprint 4 derive des issues GitHub ouvertes : J1-J2=#55 (AI post-processing), J3=#32 (Local Whisper), J4=#56 (Onboarding), J5=#53 (CI/CD split).
+  - 9 issues ouvertes sur GitHub. 4 planifiees Sprint 4, 5 en backlog Sprint 5+.
+  - PLAN.md snapshot J0 cree dans memory/sprints/sprint-04/.
+  - DAILY_GOAL.md confirme : J1 19/05, issue #55, PostProcessor service + settings UI.
+  - Branche claude/affectionate-cerf-0aQJ6 : 11 commits ahead de main (inclut Sprint 4 setup + features v1.1).
+  - **Aucune urgence CI** — pipeline fonctionnel (tests + lint + release + smoke test).
+  - **Priorite #1 cette semaine** : AI post-processing (#55) = feature revenue, 2 jours planifies.
+
 ## 2026-05-04 — Weekly Strategic Review (manager)
 - Objectif: Revue strategique hebdomadaire — cloture Sprint 2, lancement Sprint 3
 - Statut: Review completee
