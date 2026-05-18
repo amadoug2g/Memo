@@ -283,6 +283,18 @@ Format par entrée :
   - **Aucune urgence CI** — pipeline fonctionnel (tests + lint + release + smoke test).
   - **Priorite #1 cette semaine** : AI post-processing (#55) = feature revenue, 2 jours planifies.
 
+## 2026-05-18 — Weekly Strategic Review #2 (manager)
+- Objectif: Revue strategique hebdomadaire — confirmation Sprint 4 plan, merge PR #59
+- Statut: Review completee
+- Tests: N/A
+- Notes:
+  - Sprint 4 plan confirme : J1=#55 (AI post-processing), J2=#55, J3=#32 (Local Whisper), J4=#56 (Onboarding), J5=#53 (CI/CD split).
+  - 9 issues GitHub ouvertes. 4 planifiees Sprint 4, 5 en backlog Sprint 5+.
+  - Branche claude/affectionate-cerf-0aQJ6 : 1 commit ahead de main (PLAN.md snapshot).
+  - CI "Swift Tests" en echec sur PR #59 — aucun code Swift modifie, probable echec transitoire du runner macos-14. Re-declenchement CI via push.
+  - DAILY_GOAL.md valide : cible J1 19/05, issue #55, PostProcessor service + settings UI.
+  - Aucun changement de plan necessaire — Sprint 4 pret pour demarrage lundi 19/05.
+
 ## 2026-05-04 — Weekly Strategic Review (manager)
 - Objectif: Revue strategique hebdomadaire — cloture Sprint 2, lancement Sprint 3
 - Statut: Review completee
