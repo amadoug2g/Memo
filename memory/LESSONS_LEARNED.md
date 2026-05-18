@@ -1,41 +1,41 @@
 # Lessons Learned — Memo
 
-Journal append-only. Ne jamais supprimer ou réécrire une entrée.
+Journal append-only. Ne jamais supprimer ou reecrire une entree.
 Format : `## [Pattern|Antipattern]: <nom> — <date> — (coder|reviewer|manager|human)`
 
-Les entrées marquées `[promote]` sont candidates pour le template `ai-project-launchpad`.
+Les entrees marquees `[promote]` sont candidates pour le template `ai-project-launchpad`.
 
 ---
 
 ## Antipattern: .claude/ dans .gitignore — 2026-04-16 — human [promote]
 **Context:** Setup initial du workflow agents.
-**Observation:** Le `.gitignore` ignorait `.claude/`, rendant les fichiers agents invisibles pour git. Les agents n'auraient jamais été versionnés ni partagés entre sessions.
-**Decision/Rule:** Toujours versionner `.claude/agents/` dans git. Seul `.claude/settings.local.json` (secrets locaux) doit être ignoré.
-**Outcome:** ✅ Corrigé au setup. Règle à appliquer dès `init` dans tout nouveau projet.
+**Observation:** Le `.gitignore` ignorait `.claude/`, rendant les fichiers agents invisibles pour git. Les agents n'auraient jamais ete versionnes ni partages entre sessions.
+**Decision/Rule:** Toujours versionner `.claude/agents/` dans git. Seul `.claude/settings.local.json` (secrets locaux) doit etre ignore.
+**Outcome:** Corrige au setup. Regle a appliquer des `init` dans tout nouveau projet.
 
-## Antipattern: Modèles d'agents incorrects — 2026-04-16 — human [promote]
+## Antipattern: Modeles d'agents incorrects — 2026-04-16 — human [promote]
 **Context:** Brief original utilisait `claude-opus-4` et `claude-sonnet-4-5`.
-**Observation:** Ces IDs de modèles sont obsolètes/inexistants. Les agents ne démarrent pas avec des IDs invalides.
-**Decision/Rule:** Toujours vérifier les IDs de modèles dans la doc Anthropic. IDs corrects au 2026-04 : `claude-opus-4-6`, `claude-sonnet-4-6`.
-**Outcome:** ✅ Corrigé. À documenter dans le template launchpad avec note de mise à jour.
+**Observation:** Ces IDs de modeles sont obsoletes/inexistants. Les agents ne demarrent pas avec des IDs invalides.
+**Decision/Rule:** Toujours verifier les IDs de modeles dans la doc Anthropic. IDs corrects au 2026-04 : `claude-opus-4-6`, `claude-sonnet-4-6`.
+**Outcome:** Corrige. A documenter dans le template launchpad avec note de mise a jour.
 
-## Antipattern: Keychain verrouillé en CI — 2026-04-17 — human [promote]
+## Antipattern: Keychain verrouille en CI — 2026-04-17 — human [promote]
 **Context:** GitHub Actions macOS runner, `swift test`.
-**Observation:** Le login Keychain est verrouillé par défaut sur GitHub Actions. `SecItemAdd` retourne `errSecInteractionNotAllowed`, faisant échouer silencieusement les tests qui écrivent/lisent des secrets.
-**Decision/Rule:** Toujours créer et déverrouiller un keychain de test dans le workflow CI avant `swift test`. Commande : `security create-keychain -p "" ci-test.keychain && security unlock-keychain`.
-**Outcome:** ✅ Corrigé dans `.github/workflows/ci.yml`.
+**Observation:** Le login Keychain est verrouille par defaut sur GitHub Actions. `SecItemAdd` retourne `errSecInteractionNotAllowed`, faisant echouer silencieusement les tests qui ecrivent/lisent des secrets.
+**Decision/Rule:** Toujours creer et deverrouiller un keychain de test dans le workflow CI avant `swift test`. Commande : `security create-keychain -p "" ci-test.keychain && security unlock-keychain`.
+**Outcome:** Corrige dans `.github/workflows/ci.yml`.
 
-## Antipattern: NSApplication non initialisé dans swift test — 2026-04-17 — human [promote]
+## Antipattern: NSApplication non initialise dans swift test — 2026-04-17 — human [promote]
 **Context:** Tests AppKit (NSPanel, NSWindow) dans un target `swift test` SPM.
-**Observation:** `swift test` ne démarre pas de `NSApplication`. Les tests qui créent des panels ou appellent `NSApp.activate()` crashent ou retournent des tailles nulles.
+**Observation:** `swift test` ne demarre pas de `NSApplication`. Les tests qui creent des panels ou appellent `NSApp.activate()` crashent ou retournent des tailles nulles.
 **Decision/Rule:** Ajouter un `XCTestObservation` qui initialise `NSApplication.shared` avant tout test. Fichier : `Tests/*/TestSetup.swift`.
-**Outcome:** ✅ Corrigé via `TestSetup.swift`.
+**Outcome:** Corrige via `TestSetup.swift`.
 
 ## Antipattern: Skip condition trop large dans DeploymentTests — 2026-04-17 — human
 **Context:** `test_appBundle_hasBinary` en CI.
-**Observation:** `Memo.app/Contents/Info.plist` est tracké dans git, donc `Memo.app/` existe en CI. Le skip était basé sur `bundlePath` (le dossier) au lieu de `binaryPath` (le binaire absent). Le test échouait au lieu de skiper.
-**Decision/Rule:** Les skip conditions dans les DeploymentTests doivent vérifier l'existence de l'artefact testé spécifiquement, pas du dossier parent.
-**Outcome:** ✅ Corrigé dans `DeploymentTests.swift`.
+**Observation:** `Memo.app/Contents/Info.plist` est tracke dans git, donc `Memo.app/` existe en CI. Le skip etait base sur `bundlePath` (le dossier) au lieu de `binaryPath` (le binaire absent). Le test echouait au lieu de skiper.
+**Decision/Rule:** Les skip conditions dans les DeploymentTests doivent verifier l'existence de l'artefact teste specifiquement, pas du dossier parent.
+**Outcome:** Corrige dans `DeploymentTests.swift`.
 
 ## Pattern: Fallback SPRINT_CURRENT quand DAILY_GOAL est perime — 2026-05-12 — coder [promote]
 **Context:** Sprint 3 J5 — DAILY_GOAL.md date du 04/05, mais nous sommes le 12/05. L'objectif J1 est deja partiellement bloque humain.
@@ -43,8 +43,14 @@ Les entrées marquées `[promote]` sont candidates pour le template `ai-project-
 **Decision/Rule:** Toujours verifier SPRINT_CURRENT.md quand la date de DAILY_GOAL.md < date courante. Identifier le premier item avec Statut "A faire" ou vide — c'est l'objectif reel du jour.
 **Outcome:** Applique — J5 (sprint review + retro) correctement identifie comme item restant et complete.
 
+## Antipattern: Stale SPM cache after Xcode runner update — 2026-05-18 — manager [promote]
+**Context:** CI "Swift Tests" job failing in ~14 seconds consistently. No Swift code changed. SwiftLint passing.
+**Observation:** The macos-14 GitHub Actions runner updated its default Xcode version. The SPM `.build` cache (keyed by `Package.swift` hash only) was built with the previous Xcode. Swift tried to use stale build artifacts from an incompatible toolchain, causing instant build failures.
+**Decision/Rule:** (1) Always pin Xcode version in CI via `xcode-select`. (2) Include Xcode version in the SPM cache key so runner image updates automatically bust the cache. (3) A build failure in <20 seconds almost always means toolchain mismatch or cache corruption, not a code error.
+**Outcome:** Fixed in ci.yml. Xcode 16.2 pinned, cache key includes `xcode162` prefix. All 4 check runs green.
+
 ## Antipattern: Branches orphelines sans auto-merge — 2026-04-16 — human [promote]
-**Context:** Routines agents qui créent des PRs sans les merger.
-**Observation:** Sans auto-merge dans le reviewer, les branches s'accumulent (6 branches après 2 jours). L'humain doit intervenir pour merger → casse l'autonomie du système.
-**Decision/Rule:** Le reviewer doit toujours : créer la PR → merger immédiatement (squash) → supprimer la branche. Cycle fermé sans intervention humaine.
-**Outcome:** ✅ Corrigé dans `reviewer.md`.
+**Context:** Routines agents qui creent des PRs sans les merger.
+**Observation:** Sans auto-merge dans le reviewer, les branches s'accumulent (6 branches apres 2 jours). L'humain doit intervenir pour merger -> casse l'autonomie du systeme.
+**Decision/Rule:** Le reviewer doit toujours : creer la PR -> merger immediatement (squash) -> supprimer la branche. Cycle ferme sans intervention humaine.
+**Outcome:** Corrige dans `reviewer.md`.

@@ -65,13 +65,13 @@ Format par entrée :
 - Objectif: GitHub Pages activation + README polish (Sprint 1 J4)
 - Statut: ✅ LGTM
 - Tests: swift non disponible sur Linux — 46 tests inchanges (aucune modification Swift)
-- Notes: pages.yml cree — deploie docs/ sur GitHub Pages a chaque push sur main avec filtre path docs/**, plus workflow_dispatch. Permissions minimales (contents:read, pages:write, id-token:write), concurrency guard, actions a jour. README: badges CI/release/macOS/license, section Telecharger avec lien DMG direct, Screenshots placeholder (J5), make dmg dans les commandes, test count 27→46, roadmap mise a jour (DMG/release.yml/landing page coches). Suggestion non-bloquante: le filtre path docs/** sur pages.yml est intentionnel et correct; le lien DMG reste fixe a Memo-v1.0.dmg, cohérent avec release.yml.
+- Notes: pages.yml cree — deploie docs/ sur GitHub Pages a chaque push sur main avec filtre path docs/**, plus workflow_dispatch. Permissions minimales (contents:read, pages:write, id-token:write), concurrency guard, actions a jour. README: badges CI/release/macOS/license, section Telecharger avec lien DMG direct, Screenshots placeholder (J5), make dmg dans les commandes, test count 27->46, roadmap mise a jour (DMG/release.yml/landing page coches). Suggestion non-bloquante: le filtre path docs/** sur pages.yml est intentionnel et correct; le lien DMG reste fixe a Memo-v1.0.dmg, coherent avec release.yml.
 
 ## 2026-04-24
-- Objectif: Sprint 1 J7 — Sprint Review + Rétrospective
+- Objectif: Sprint 1 J7 — Sprint Review + Retrospective
 - Statut: ✅ Done
 - Tests: swift non disponible sur Linux — 46 tests inchanges (aucune modification Swift)
-- Notes: memory/sprints/sprint-01/SPRINT_REVIEW.md et RETRO.md créés (DoD 6/6, score sprint 23/25). *.dmg ajouté au .gitignore. SPRINT_CURRENT.md mis à jour (J7 Done, tous les DoD items cochés). Sprint 1 terminé — prochaines étapes: smoke test macOS, tag v1.0.
+- Notes: memory/sprints/sprint-01/SPRINT_REVIEW.md et RETRO.md crees (DoD 6/6, score sprint 23/25). *.dmg ajoute au .gitignore. SPRINT_CURRENT.md mis a jour (J7 Done, tous les DoD items coches). Sprint 1 termine — prochaines etapes: smoke test macOS, tag v1.0.
 
 ## 2026-04-27 — Weekly Strategic Review (manager)
 - Objectif: Revue strategique hebdomadaire — cloture Sprint 1, lancement Sprint 2
@@ -241,7 +241,7 @@ Format par entrée :
 - Objectif: Valider la sprint review et retrospective Sprint 3
 - Statut: LGTM
 - Tests: swift non disponible sur Linux — 46 tests inchanges (aucune modification Swift)
-- Notes: SPRINT_REVIEW.md et RETRO.md complets et cohérents. DoD 3/5 exact, bloquants humain documentés avec commandes précises. RETRO Keep/Improve/Add actionnable, score 23/25 cohérent. LESSONS_LEARNED pattern [promote] bien formé. Sprint 3 entièrement clos.
+- Notes: SPRINT_REVIEW.md et RETRO.md complets et coherents. DoD 3/5 exact, bloquants humain documentes avec commandes precises. RETRO Keep/Improve/Add actionnable, score 23/25 coherent. LESSONS_LEARNED pattern [promote] bien forme. Sprint 3 entierement clos.
 
 ## 2026-05-13 — Post-Sprint 3 — Handoff (coder)
 - Objectif: DAILY_GOAL.md perime (date 2026-05-04), Sprint 3 entierement clos — documenter l'etat et preparer la prochaine iteration
@@ -284,16 +284,18 @@ Format par entrée :
   - **Priorite #1 cette semaine** : AI post-processing (#55) = feature revenue, 2 jours planifies.
 
 ## 2026-05-18 — Weekly Strategic Review #2 (manager)
-- Objectif: Revue strategique hebdomadaire — confirmation Sprint 4 plan, merge PR #59
-- Statut: Review completee
-- Tests: N/A
+- Objectif: Revue strategique hebdomadaire — confirmation Sprint 4 plan, merge PR #59, fix CI
+- Statut: ✅ Review completee
+- PR: #59 (merged, squash)
+- Tests: Swift Tests PASS (52 tests), SwiftLint PASS — apres fix CI
 - Notes:
   - Sprint 4 plan confirme : J1=#55 (AI post-processing), J2=#55, J3=#32 (Local Whisper), J4=#56 (Onboarding), J5=#53 (CI/CD split).
   - 9 issues GitHub ouvertes. 4 planifiees Sprint 4, 5 en backlog Sprint 5+.
-  - Branche claude/affectionate-cerf-0aQJ6 : 1 commit ahead de main (PLAN.md snapshot).
-  - CI "Swift Tests" en echec sur PR #59 — aucun code Swift modifie, probable echec transitoire du runner macos-14. Re-declenchement CI via push.
+  - **CI FIX** : "Swift Tests" echouait en ~14s (3 runs consecutifs). Root cause = cache SPM stale apres mise a jour Xcode sur le runner macos-14. Fix : pin Xcode 16.2 via xcode-select + nouveau cache key incluant version Xcode. 4/4 checks green apres fix.
+  - PR #59 mergee (squash) dans main : commit a7591b8.
+  - LESSONS_LEARNED mis a jour avec pattern "Stale SPM cache after Xcode runner update".
   - DAILY_GOAL.md valide : cible J1 19/05, issue #55, PostProcessor service + settings UI.
-  - Aucun changement de plan necessaire — Sprint 4 pret pour demarrage lundi 19/05.
+  - Sprint 4 pret pour demarrage lundi 19/05. CI fonctionnel.
 
 ## 2026-05-04 — Weekly Strategic Review (manager)
 - Objectif: Revue strategique hebdomadaire — cloture Sprint 2, lancement Sprint 3
