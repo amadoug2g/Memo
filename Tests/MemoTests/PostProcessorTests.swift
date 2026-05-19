@@ -77,4 +77,65 @@ final class PostProcessorTests: XCTestCase {
         XCTAssertNotNil(PostProcessorError.emptyPrompt.errorDescription)
         XCTAssertNotNil(PostProcessorError.httpError(401, "Unauthorized").errorDescription)
     }
+
+    // MARK: - PostProcessor input validation (no network calls)
+
+    func testProcessThrowsMissingAPIKeyWhenKeyIsEmpty() async {
+        let sut = PostProcessor(api: .openAI)
+        do {
+            _ = try await sut.process(text: "hello", prompt: "Fix grammar", apiKey: "")
+            XCTFail("Expected PostProcessorError.missingAPIKey")
+        } catch PostProcessorError.missingAPIKey {
+            // expected
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testProcessThrowsMissingAPIKeyWhenKeyIsWhitespace() async {
+        let sut = PostProcessor(api: .claude)
+        do {
+            _ = try await sut.process(text: "hello", prompt: "Fix", apiKey: "   ")
+            XCTFail("Expected PostProcessorError.missingAPIKey")
+        } catch PostProcessorError.missingAPIKey {
+            // expected
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testProcessThrowsEmptyPromptWhenPromptIsEmpty() async {
+        let sut = PostProcessor(api: .openAI)
+        do {
+            _ = try await sut.process(text: "hello", prompt: "", apiKey: "sk-valid")
+            XCTFail("Expected PostProcessorError.emptyPrompt")
+        } catch PostProcessorError.emptyPrompt {
+            // expected
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testProcessThrowsEmptyPromptWhenPromptIsWhitespace() async {
+        let sut = PostProcessor(api: .openAI)
+        do {
+            _ = try await sut.process(text: "hello", prompt: "   ", apiKey: "sk-valid")
+            XCTFail("Expected PostProcessorError.emptyPrompt")
+        } catch PostProcessorError.emptyPrompt {
+            // expected
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    // MARK: - PostProcessingPrompt system prompts
+
+    func testPresetPromptsAllHaveNonEmptySystemPrompt() {
+        for preset in PostProcessingPrompt.allCases where preset != .custom {
+            XCTAssertFalse(
+                preset.systemPrompt.isEmpty,
+                "systemPrompt is empty for preset: \(preset.rawValue)"
+            )
+        }
+    }
 }
