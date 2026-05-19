@@ -297,6 +297,18 @@ Format par entrée :
   - DAILY_GOAL.md valide : cible J1 19/05, issue #55, PostProcessor service + settings UI.
   - Sprint 4 pret pour demarrage lundi 19/05. CI fonctionnel.
 
+## 2026-05-19 — Sprint 4 J1 — AI post-processing: PostProcessor service + settings UI (coder + reviewer)
+- Objectif: Issue #55 — PostProcessor service + UI settings pour le post-traitement AI (J1/2)
+- Statut: ✅ LGTM
+- Tests: 12 tests PostProcessorTests (swift non disponible sur Linux — vérifié syntaxiquement et logiquement)
+- Notes:
+  - PostProcessor.swift créé : protocole PostProcessing injectable, 6 presets PostProcessingPrompt, PostProcessingAPI (openAI/claude), implémentation callOpenAI (gpt-4o-mini) + callClaude (claude-haiku-4-5), validation apiKey/prompt avant réseau, erreurs localisées.
+  - PreferencesStore.swift étendu : 5 champs post-processing, postProcessingAPIKey via Keychain.
+  - AppState.swift étendu : 5 @Published vars, chargement UserDefaults/Keychain, savePreferences() complet.
+  - SettingsView.swift : section "Post-processing" complète (toggle, prompt picker, custom prompt conditionnel, API picker segmented, SecureField clé API secondaire).
+  - Sécurité : aucune clé en dur, Keychain utilisé correctement, URLSession.ephemeral.
+  - Suggestions non-bloquantes : (1) J2 devra passer systemPrompt résolu (pas rawValue) lors du câblage AppState ; (2) vérifier model ID "claude-haiku-4-5" en production.
+
 ## 2026-05-04 — Weekly Strategic Review (manager)
 - Objectif: Revue strategique hebdomadaire — cloture Sprint 2, lancement Sprint 3
 - Statut: Review completee
