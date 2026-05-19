@@ -19,6 +19,13 @@ struct SettingsView: View {
     @State private var saveFailed = false
     @State private var keyTestState: KeyTestState = .idle
 
+    // Post-processing
+    @State private var postProcessingEnabled: Bool = false
+    @State private var postProcessingAPI: PostProcessingAPI = .openAI
+    @State private var postProcessingPrompt: PostProcessingPrompt = .cleanGrammar
+    @State private var postProcessingCustomPrompt: String = ""
+    @State private var postProcessingAPIKey: String = ""
+
     private let languages: [(label: String, code: String)] = [
         ("Auto-detect",  "auto"),
         ("English",      "en"),
@@ -115,6 +122,50 @@ struct SettingsView: View {
                 HotkeyRecorderView(keyCode: $hotkeyKeyCode, modifiers: $hotkeyModifiers)
             } header: {
                 Text("Hotkey")
+            }
+
+            // MARK: Post-processing
+            Section {
+                Toggle("Enable AI post-processing", isOn: $postProcessingEnabled)
+                Text("After transcription, the text is polished by an LLM before being pasted.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if postProcessingEnabled {
+                    Picker("Prompt", selection: $postProcessingPrompt) {
+                        ForEach(PostProcessingPrompt.allCases) { prompt in
+                            Text(prompt.label).tag(prompt)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    if postProcessingPrompt == .custom {
+                        TextField("Enter your system prompt…", text: $postProcessingCustomPrompt, axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .lineLimit(3...6)
+                            .font(.system(.body))
+                            .accessibilityLabel("Custom post-processing prompt")
+                    }
+
+                    Picker("API", selection: $postProcessingAPI) {
+                        ForEach(PostProcessingAPI.allCases) { api in
+                            Text(api.label).tag(api)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    HStack {
+                        SecureField("API key (leave empty to use Whisper key)", text: $postProcessingAPIKey)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.body, design: .monospaced))
+                            .accessibilityLabel("Post-processing API key")
+                    }
+                    Text("Leave blank to reuse the OpenAI key above.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Post-processing")
             }
 
             // MARK: Save / Done
@@ -230,21 +281,31 @@ struct SettingsView: View {
     }
 
     private func loadFromAppState() {
-        apiKey          = appState.openAIApiKey
-        language        = appState.selectedLanguage
-        mode            = appState.recordingMode
-        autoPaste       = appState.autoPasteEnabled
-        hotkeyKeyCode   = appState.hotkeyKeyCode
-        hotkeyModifiers = appState.hotkeyModifiers
+        apiKey                    = appState.openAIApiKey
+        language                  = appState.selectedLanguage
+        mode                      = appState.recordingMode
+        autoPaste                 = appState.autoPasteEnabled
+        hotkeyKeyCode             = appState.hotkeyKeyCode
+        hotkeyModifiers           = appState.hotkeyModifiers
+        postProcessingEnabled     = appState.postProcessingEnabled
+        postProcessingAPI         = appState.postProcessingAPI
+        postProcessingPrompt      = appState.postProcessingPrompt
+        postProcessingCustomPrompt = appState.postProcessingCustomPrompt
+        postProcessingAPIKey      = appState.postProcessingAPIKey
     }
 
     private func save() {
-        appState.openAIApiKey     = apiKey
-        appState.selectedLanguage = language
-        appState.recordingMode    = mode
-        appState.autoPasteEnabled = autoPaste
-        appState.hotkeyKeyCode    = hotkeyKeyCode
-        appState.hotkeyModifiers  = hotkeyModifiers
+        appState.openAIApiKey              = apiKey
+        appState.selectedLanguage          = language
+        appState.recordingMode             = mode
+        appState.autoPasteEnabled          = autoPaste
+        appState.hotkeyKeyCode             = hotkeyKeyCode
+        appState.hotkeyModifiers           = hotkeyModifiers
+        appState.postProcessingEnabled     = postProcessingEnabled
+        appState.postProcessingAPI         = postProcessingAPI
+        appState.postProcessingPrompt      = postProcessingPrompt
+        appState.postProcessingCustomPrompt = postProcessingCustomPrompt
+        appState.postProcessingAPIKey      = postProcessingAPIKey
         let ok = appState.savePreferences()
 
         if ok {

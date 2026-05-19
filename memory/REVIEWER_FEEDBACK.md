@@ -1,18 +1,36 @@
 Itération: 1
 Statut: LGTM
 
-Session 2026-05-14 — Deuxieme handoff post-Sprint 3 valide.
+Session 2026-05-19 — PostProcessor service + settings UI pour AI post-processing (#55, J1)
 
-Changements valides:
-- memory/CODER_SUMMARY.md : mis a jour avec l'objectif exact (deuxieme handoff, DAILY_GOAL perime 10 jours, Sprint 3 clos, Sprint 4 non defini).
-- memory/SESSION_LOG.md : entree 2026-05-14 ajoutee avec statut "Done (aucun item implementable)", etat branche (2 commits ahead de main), bloquants humain inchanges documentes.
+## Evaluation
 
-Aucune modification Swift — 46 tests inchanges (Swift non disponible sur Linux, coherent avec toutes les sessions precedentes).
+### Correctness
+- PostProcessor.swift : protocole PostProcessing injectable, enums PostProcessingPrompt (6 presets) et PostProcessingAPI (openAI/claude) conformes Identifiable/CaseIterable, implémentation concrète avec callOpenAI (gpt-4o-mini) et callClaude (claude-haiku-4-5), validation apiKey et prompt avant tout appel réseau, gestion httpError/emptyResponse/emptyPrompt correcte.
+- PreferencesStore.swift : 5 champs post-processing ajoutés (enabled, api, prompt, customPrompt, apiKey), load/save étendu correctement, postProcessingAPIKey via Keychain (save/delete symétrique).
+- AppState.swift : 5 @Published vars ajoutés, chargement UserDefaults dans init (loadFast), Keychain en Task @MainActor différé, savePreferences() étendu avec tous les champs.
+- SettingsView.swift : section "Post-processing" complète — toggle enable/disable, Picker prompts prédéfinis, TextField prompt custom conditionnel (affiché uniquement si .custom sélectionné), Picker API segmented, SecureField clé API secondaire, loadFromAppState() et save() câblés pour tous les champs post-processing.
 
-Sprint alignment : DAILY_GOAL.md est perime de 10 jours et Sprint 3 est entierement clos. Le coder a correctement identifie qu'il n'y a aucun item implementable sans Sprint 4 defini par le manager. Cette posture est appropriee et bien documentee.
+### Sprint Alignment
+Contribue directement à l'objectif Sprint 4 "AI post-processing (#55)" — J1 entièrement couverte.
 
-Qualite du commit : message conventionnel correct (docs:), description precise, uniquement memory/ modifie.
+### Security
+- Aucune clé API en dur dans le code source.
+- postProcessingAPIKey stockée via KeychainService (clé "postProcessingAPIKey"), supprimée si vide — pattern identique à openAIApiKey.
+- URLSession.ephemeral utilisé (pas de cache disque).
 
-Bloquants humain restants (non-bloquants pour cette review) :
-1. GitHub Pages — verification navigateur requise.
-2. Branches orphelines — git push --delete bloque par proxy 403 sandbox.
+### Swift Idioms
+- @MainActor correct sur AppState et tâche Keychain différée.
+- async/await utilisé correctement dans PostProcessor.process().
+- Pas de force-unwrap dangereux (guard let/if let systématique).
+- preconditionFailure() sur URL invalide (URL statique connue au compile time — acceptable).
+
+### Tests
+12 tests couvrent : mock protocol, forwarding inputs, error propagation, enum uniqueness (labels), error descriptions, validation missingAPIKey (vide et whitespace), emptyPrompt (vide et whitespace), preset systemPrompts non vides. Critère ≥ 4 tests largement dépassé.
+
+### Make test
+Swift non disponible dans l'environnement Linux — cohérent avec toutes les sessions précédentes. Code vérifié syntaxiquement et logiquement via lecture.
+
+## Suggestions (non-bloquantes)
+1. La méthode process() sur le protocole prend `prompt: String` (le systemPrompt résolu par l'appelant). J2 devra veiller à passer postProcessingPrompt.systemPrompt (ou postProcessingCustomPrompt pour .custom) et non le rawValue de l'enum — documenter ce point dans AppState lors du câblage J2.
+2. callClaude utilise "claude-haiku-4-5" — à vérifier lors de la mise en production que ce model ID correspond bien au modèle live Anthropic (peut varier selon les déploiements).
