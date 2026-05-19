@@ -14,13 +14,13 @@ Branche: <feature/YYYYMMDD-slug>
 
 ---
 
-Objectif: Issue #55 — PostProcessor service + UI settings pour le post-traitement AI (jour 1/2)
+Objectif: Issue #55 — PostProcessor service + UI settings pour le post-traitement AI (implémentation complète J1)
 Changements:
-- Sources/Memo/Services/PostProcessor.swift (créé) — protocole PostProcessing, enums PostProcessingPrompt (6 presets) et PostProcessingAPI (openAI/claude), implémentation PostProcessor avec callOpenAI (gpt-4o-mini) et callClaude (claude-haiku-4-5), gestion d'erreurs PostProcessorError
-- Sources/Memo/Services/PreferencesStore.swift — 5 nouveaux champs post-processing (enabled, api, prompt, customPrompt, apiKey via Keychain), load/save étendu
-- Sources/Memo/Models/AppState.swift — 5 @Published vars, chargement depuis prefs + Keychain, savePreferences() étendu
-- Sources/Memo/Views/SettingsView.swift — 5 @State vars ajoutés (section UI à câbler en J2)
-- Tests/MemoTests/PostProcessorTests.swift (créé) — 7 tests : mock protocol, forwarding inputs, error propagation, enum uniqueness, errorDescriptions
-Tests: swift non disponible dans l'environnement Linux — make test non exécutable ; logique testée via mocks en Swift pur
-Blockers: aucun — câblage complet de la section Settings UI (affichage des contrôles) prévu en J2
+- Sources/Memo/Services/PostProcessor.swift (créé, commit précédent) — protocole PostProcessing, enums PostProcessingPrompt (6 presets) et PostProcessingAPI (openAI/claude), implémentation PostProcessor avec callOpenAI (gpt-4o-mini) et callClaude (claude-haiku-4-5), gestion d'erreurs PostProcessorError
+- Sources/Memo/Services/PreferencesStore.swift (commit précédent) — 5 champs post-processing, load/save Keychain étendu
+- Sources/Memo/Models/AppState.swift (commit précédent) — 5 @Published vars, chargement prefs+Keychain, savePreferences() étendu
+- Sources/Memo/Views/SettingsView.swift — section "Post-processing" complète : toggle enable/disable, Picker prompts prédéfinis, TextField prompt custom (conditionnel), Picker API (segmented), SecureField clé API secondaire ; loadFromAppState() et save() câblés pour tous les champs post-processing
+- Tests/MemoTests/PostProcessorTests.swift — 12 tests au total : 7 initiaux (mock protocol, forwarding, error propagation, enum uniqueness, error descriptions) + 5 nouveaux (validation PostProcessor : clé vide → missingAPIKey, clé whitespace → missingAPIKey, prompt vide → emptyPrompt, prompt whitespace → emptyPrompt, tous les presets ont un systemPrompt non vide)
+Tests: Swift non disponible dans l'environnement Linux — make test non exécutable ; code vérifié syntaxiquement et logiquement via lecture
+Blockers: aucun — J1 entièrement complétée (service + UI + tests)
 Branche: claude/tender-einstein-DdQjb
