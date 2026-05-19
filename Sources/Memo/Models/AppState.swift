@@ -57,6 +57,13 @@ class AppState: ObservableObject {
     @Published var hotkeyKeyCode: Int = 49      // Space
     @Published var hotkeyModifiers: Int = 2048  // Carbon optionKey
 
+    // Post-processing preferences
+    @Published var postProcessingEnabled: Bool = false
+    @Published var postProcessingAPI: PostProcessingAPI = .openAI
+    @Published var postProcessingPrompt: PostProcessingPrompt = .cleanGrammar
+    @Published var postProcessingCustomPrompt: String = ""
+    @Published var postProcessingAPIKey: String = ""
+
     // App status
     @Published var hotkeyConflict: Bool = false
 
@@ -91,6 +98,10 @@ class AppState: ObservableObject {
         autoPasteEnabled = prefs.autoPasteEnabled
         hotkeyKeyCode = prefs.hotkeyKeyCode
         hotkeyModifiers = prefs.hotkeyModifiers
+        postProcessingEnabled = prefs.postProcessingEnabled
+        postProcessingAPI = prefs.postProcessingAPI
+        postProcessingPrompt = prefs.postProcessingPrompt
+        postProcessingCustomPrompt = prefs.postProcessingCustomPrompt
 
         // The level timer fires on the main RunLoop (scheduled from @MainActor context),
         // so assumeIsolated is safe and avoids a Task allocation every 50ms.
@@ -101,6 +112,7 @@ class AppState: ObservableObject {
         // Keychain reads block for 10–50ms — defer past the first rendered frame.
         Task { @MainActor [weak self] in
             self?.openAIApiKey = KeychainService.load(forKey: "openAIApiKey") ?? ""
+            self?.postProcessingAPIKey = KeychainService.load(forKey: "postProcessingAPIKey") ?? ""
         }
     }
 
@@ -214,7 +226,7 @@ class AppState: ObservableObject {
 
     // MARK: - Preferences
 
-    /// Saves preferences. Returns `false` if the Keychain write fails.
+    /// Saves preferences. Returns `false` if any Keychain write fails.
     @discardableResult
     func savePreferences() -> Bool {
         PreferencesStore(
@@ -223,7 +235,12 @@ class AppState: ObservableObject {
             recordingMode: recordingMode,
             autoPasteEnabled: autoPasteEnabled,
             hotkeyKeyCode: hotkeyKeyCode,
-            hotkeyModifiers: hotkeyModifiers
+            hotkeyModifiers: hotkeyModifiers,
+            postProcessingEnabled: postProcessingEnabled,
+            postProcessingAPI: postProcessingAPI,
+            postProcessingPrompt: postProcessingPrompt,
+            postProcessingCustomPrompt: postProcessingCustomPrompt,
+            postProcessingAPIKey: postProcessingAPIKey
         ).save()
     }
 

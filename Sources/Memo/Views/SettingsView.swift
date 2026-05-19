@@ -19,6 +19,13 @@ struct SettingsView: View {
     @State private var saveFailed = false
     @State private var keyTestState: KeyTestState = .idle
 
+    // Post-processing
+    @State private var postProcessingEnabled: Bool = false
+    @State private var postProcessingAPI: PostProcessingAPI = .openAI
+    @State private var postProcessingPrompt: PostProcessingPrompt = .cleanGrammar
+    @State private var postProcessingCustomPrompt: String = ""
+    @State private var postProcessingAPIKey: String = ""
+
     private let languages: [(label: String, code: String)] = [
         ("Auto-detect",  "auto"),
         ("English",      "en"),
