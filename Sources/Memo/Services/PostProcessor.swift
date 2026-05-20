@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Protocol
 
 protocol PostProcessing: AnyObject {
-    func process(text: String, prompt: String, apiKey: String) async throws -> String
+    func process(text: String, prompt: String, apiKey: String, api: PostProcessingAPI) async throws -> String
 }
 
 // MARK: - Preset prompts
@@ -89,8 +89,6 @@ enum PostProcessorError: LocalizedError {
 
 final class PostProcessor: PostProcessing {
 
-    private let api: PostProcessingAPI
-
     private let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest  = 30
@@ -98,11 +96,7 @@ final class PostProcessor: PostProcessing {
         return URLSession(configuration: config)
     }()
 
-    init(api: PostProcessingAPI = .openAI) {
-        self.api = api
-    }
-
-    func process(text: String, prompt: String, apiKey: String) async throws -> String {
+    func process(text: String, prompt: String, apiKey: String, api: PostProcessingAPI) async throws -> String {
         guard !apiKey.trimmingCharacters(in: .whitespaces).isEmpty else {
             throw PostProcessorError.missingAPIKey
         }

@@ -215,7 +215,8 @@ class AppState: ObservableObject {
                     text = (try? await postProcessor.process(
                         text: text,
                         prompt: systemPrompt,
-                        apiKey: apiKey
+                        apiKey: apiKey,
+                        api: postProcessingAPI
                     )) ?? text
                 }
             }
@@ -259,7 +260,8 @@ class AppState: ObservableObject {
             if let result = try? await postProcessor.process(
                 text: inputText,
                 prompt: systemPrompt,
-                apiKey: apiKey
+                apiKey: apiKey,
+                api: postProcessingAPI
             ) {
                 transcribedText = result
             }

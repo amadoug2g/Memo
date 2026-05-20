@@ -9,7 +9,7 @@ final class PostProcessorTests: XCTestCase {
         let mock = MockPostProcessor()
         mock.result = .success("Corrected text.")
 
-        let output = try await mock.process(text: "helllo wrold", prompt: "Fix grammar", apiKey: "key")
+        let output = try await mock.process(text: "helllo wrold", prompt: "Fix grammar", apiKey: "key", api: .openAI)
 
         XCTAssertEqual(output, "Corrected text.")
         XCTAssertEqual(mock.callCount, 1)
@@ -18,11 +18,19 @@ final class PostProcessorTests: XCTestCase {
     func testProcessForwardsInputs() async throws {
         let mock = MockPostProcessor()
 
-        _ = try await mock.process(text: "bonjour", prompt: "Translate to English", apiKey: "sk-test")
+        _ = try await mock.process(text: "bonjour", prompt: "Translate to English", apiKey: "sk-test", api: .openAI)
 
         XCTAssertEqual(mock.lastText, "bonjour")
         XCTAssertEqual(mock.lastPrompt, "Translate to English")
         XCTAssertEqual(mock.lastAPIKey, "sk-test")
+    }
+
+    func testProcessForwardsAPIParameter() async throws {
+        let mock = MockPostProcessor()
+
+        _ = try await mock.process(text: "hello", prompt: "Fix grammar", apiKey: "sk-test", api: .claude)
+
+        XCTAssertEqual(mock.lastAPI, .claude)
     }
 
     func testProcessPropagatesError() async {
@@ -30,7 +38,7 @@ final class PostProcessorTests: XCTestCase {
         mock.result = .failure(PostProcessorError.missingAPIKey)
 
         do {
-            _ = try await mock.process(text: "hello", prompt: "Fix grammar", apiKey: "")
+            _ = try await mock.process(text: "hello", prompt: "Fix grammar", apiKey: "", api: .openAI)
             XCTFail("Expected error to be thrown")
         } catch PostProcessorError.missingAPIKey {
             // expected
@@ -63,9 +71,9 @@ final class PostProcessorTests: XCTestCase {
     // MARK: - PostProcessor input validation (no network calls)
 
     func testProcessThrowsMissingAPIKeyWhenKeyIsEmpty() async {
-        let sut = PostProcessor(api: .openAI)
+        let sut = PostProcessor()
         do {
-            _ = try await sut.process(text: "hello", prompt: "Fix grammar", apiKey: "")
+            _ = try await sut.process(text: "hello", prompt: "Fix grammar", apiKey: "", api: .openAI)
             XCTFail("Expected PostProcessorError.missingAPIKey")
         } catch PostProcessorError.missingAPIKey {
             // expected
@@ -75,9 +83,9 @@ final class PostProcessorTests: XCTestCase {
     }
 
     func testProcessThrowsMissingAPIKeyWhenKeyIsWhitespace() async {
-        let sut = PostProcessor(api: .claude)
+        let sut = PostProcessor()
         do {
-            _ = try await sut.process(text: "hello", prompt: "Fix", apiKey: "   ")
+            _ = try await sut.process(text: "hello", prompt: "Fix", apiKey: "   ", api: .claude)
             XCTFail("Expected PostProcessorError.missingAPIKey")
         } catch PostProcessorError.missingAPIKey {
             // expected
@@ -87,9 +95,9 @@ final class PostProcessorTests: XCTestCase {
     }
 
     func testProcessThrowsEmptyPromptWhenPromptIsEmpty() async {
-        let sut = PostProcessor(api: .openAI)
+        let sut = PostProcessor()
         do {
-            _ = try await sut.process(text: "hello", prompt: "", apiKey: "sk-valid")
+            _ = try await sut.process(text: "hello", prompt: "", apiKey: "sk-valid", api: .openAI)
             XCTFail("Expected PostProcessorError.emptyPrompt")
         } catch PostProcessorError.emptyPrompt {
             // expected
@@ -99,9 +107,9 @@ final class PostProcessorTests: XCTestCase {
     }
 
     func testProcessThrowsEmptyPromptWhenPromptIsWhitespace() async {
-        let sut = PostProcessor(api: .openAI)
+        let sut = PostProcessor()
         do {
-            _ = try await sut.process(text: "hello", prompt: "   ", apiKey: "sk-valid")
+            _ = try await sut.process(text: "hello", prompt: "   ", apiKey: "sk-valid", api: .openAI)
             XCTFail("Expected PostProcessorError.emptyPrompt")
         } catch PostProcessorError.emptyPrompt {
             // expected

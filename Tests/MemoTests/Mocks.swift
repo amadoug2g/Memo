@@ -60,12 +60,14 @@ final class MockPostProcessor: PostProcessing {
     private(set) var lastText: String?
     private(set) var lastPrompt: String?
     private(set) var lastAPIKey: String?
+    private(set) var lastAPI: PostProcessingAPI?
 
-    func process(text: String, prompt: String, apiKey: String) async throws -> String {
+    func process(text: String, prompt: String, apiKey: String, api: PostProcessingAPI) async throws -> String {
         callCount += 1
         lastText = text
         lastPrompt = prompt
         lastAPIKey = apiKey
+        lastAPI = api
         return try result.get()
     }
 }
