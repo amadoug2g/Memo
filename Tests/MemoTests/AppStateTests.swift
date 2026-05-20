@@ -158,6 +158,128 @@ final class AppStateTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(recorder.prepareCallCount, 1)
     }
 
+    // MARK: - Post-processing integration
+
+    func test_autoPostProcessing_appliedDuringTranscription() async {
+        let recorder = MockAudioRecorder()
+        let transcriber = MockTranscriber()
+        transcriber.result = .success("helllo wrold")
+        let postProcessor = MockPostProcessor()
+        postProcessor.result = .success("Hello world.")
+        let state = AppState(
+            audioRecorder: recorder,
+            transcriber: transcriber,
+            postProcessor: postProcessor
+        )
+        state.openAIApiKey = "sk-test"
+        state.postProcessingEnabled = true
+        state.postProcessingPrompt = .cleanGrammar
+        // resolvedPostProcessingAPIKey falls back to openAIApiKey when postProcessingAPIKey is empty
+
+        state.startRecording()
+        await waitForState(.recording, on: state)
+        state.recordingStartedAt = Date().addingTimeInterval(-1)
+        state.stopRecording()
+
+        await waitForState(.editing, on: state)
+        XCTAssertEqual(postProcessor.callCount, 1, "PostProcessor must be called once")
+        XCTAssertEqual(state.transcribedText, "Hello world.", "Transcription must be post-processed")
+    }
+
+    func test_autoPostProcessing_skippedWhenDisabled() async {
+        let recorder = MockAudioRecorder()
+        let transcriber = MockTranscriber()
+        transcriber.result = .success("raw text")
+        let postProcessor = MockPostProcessor()
+        let state = AppState(
+            audioRecorder: recorder,
+            transcriber: transcriber,
+            postProcessor: postProcessor
+        )
+        state.openAIApiKey = "sk-test"
+        state.postProcessingEnabled = false
+
+        state.startRecording()
+        await waitForState(.recording, on: state)
+        state.recordingStartedAt = Date().addingTimeInterval(-1)
+        state.stopRecording()
+
+        await waitForState(.editing, on: state)
+        XCTAssertEqual(postProcessor.callCount, 0, "PostProcessor must NOT be called when disabled")
+        XCTAssertEqual(state.transcribedText, "raw text")
+    }
+
+    func test_applyPostProcessing_updatesTranscribedText() async {
+        let postProcessor = MockPostProcessor()
+        postProcessor.result = .success("Polished text")
+        let state = AppState(
+            audioRecorder: MockAudioRecorder(),
+            transcriber: MockTranscriber(),
+            postProcessor: postProcessor
+        )
+        state.openAIApiKey = "sk-test"
+        state.postProcessingEnabled = true
+        state.postProcessingPrompt = .cleanGrammar
+        state.transcribedText = "raw input"
+        state.recordingState = .editing
+
+        state.applyPostProcessing()
+
+        // Wait for the async Task inside applyPostProcessing to complete
+        let deadline = Date().addingTimeInterval(2)
+        while state.transcribedText == "raw input" && Date() < deadline {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertEqual(state.transcribedText, "Polished text")
+        XCTAssertFalse(state.isPostProcessing, "isPostProcessing must be false after completion")
+    }
+
+    func test_applyPostProcessing_noopWhenNotEditing() async {
+        let postProcessor = MockPostProcessor()
+        let state = AppState(
+            audioRecorder: MockAudioRecorder(),
+            transcriber: MockTranscriber(),
+            postProcessor: postProcessor
+        )
+        state.openAIApiKey = "sk-test"
+        state.postProcessingEnabled = true
+        state.transcribedText = "text"
+        state.recordingState = .idle  // Not .editing
+
+        state.applyPostProcessing()
+        await Task.yield()
+
+        XCTAssertEqual(postProcessor.callCount, 0, "applyPostProcessing must be no-op when not editing")
+    }
+
+    func test_resolvedPostProcessingPrompt_usesCustomWhenSelected() {
+        let state = AppState()
+        state.postProcessingPrompt = .custom
+        state.postProcessingCustomPrompt = "My custom prompt"
+        XCTAssertEqual(state.resolvedPostProcessingPrompt, "My custom prompt")
+    }
+
+    func test_resolvedPostProcessingPrompt_usesPresetSystemPrompt() {
+        let state = AppState()
+        state.postProcessingPrompt = .cleanGrammar
+        XCTAssertEqual(state.resolvedPostProcessingPrompt, PostProcessingPrompt.cleanGrammar.systemPrompt)
+    }
+
+    func test_resolvedPostProcessingAPIKey_fallsBackToOpenAIKey() {
+        let state = AppState()
+        state.openAIApiKey = "sk-openai"
+        state.postProcessingAPIKey = ""
+        XCTAssertEqual(state.resolvedPostProcessingAPIKey, "sk-openai")
+    }
+
+    func test_resolvedPostProcessingAPIKey_usesOwnKeyWhenSet() {
+        let state = AppState()
+        state.openAIApiKey = "sk-openai"
+        state.postProcessingAPIKey = "sk-claude"
+        XCTAssertEqual(state.resolvedPostProcessingAPIKey, "sk-claude")
+    }
+
     // MARK: - Preferences round-trip
 
     func test_saveAndLoadPreferences_roundtrip() async throws {
