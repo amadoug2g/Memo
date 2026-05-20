@@ -97,3 +97,21 @@ final class MockTranscriber: Transcribing {
         return try result.get()
     }
 }
+
+// MARK: - MockPostProcessor
+
+final class MockPostProcessor: PostProcessing {
+    var result: Result<String, Error> = .success("Processed text")
+    private(set) var callCount = 0
+    private(set) var lastText: String?
+    private(set) var lastPrompt: String?
+    private(set) var lastAPIKey: String?
+
+    func process(text: String, prompt: String, apiKey: String) async throws -> String {
+        callCount += 1
+        lastText = text
+        lastPrompt = prompt
+        lastAPIKey = apiKey
+        return try result.get()
+    }
+}
