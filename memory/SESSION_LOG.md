@@ -297,6 +297,18 @@ Format par entrée :
   - DAILY_GOAL.md valide : cible J1 19/05, issue #55, PostProcessor service + settings UI.
   - Sprint 4 pret pour demarrage lundi 19/05. CI fonctionnel.
 
+## 2026-05-20 — Sprint 4 J2 — AI post-processing: câblage AppState + bouton Polish (coder + reviewer)
+- Objectif: Issue #55 — Intégration PostProcessor dans AppState, bouton Polish dans TranscriptionView, tests d'intégration (J2/2)
+- Statut: ✅ LGTM (itération 2)
+- Tests: 22+ nouveaux tests (12 PostProcessorTests + 10 AppStateTests post-processing) — swift non disponible sur Linux, vérifiés syntaxiquement et logiquement
+- Notes:
+  - Bug bloquant itération 1 corrigé : `api: PostProcessingAPI` est maintenant un paramètre de `process(...)` au lieu d'une constante figée dans `PostProcessor`. Les deux call sites dans AppState passent `postProcessingAPI` à chaque appel.
+  - AppState : injection postProcessor + historyStore, `isPostProcessing @Published`, `resolvedPostProcessingPrompt`, `resolvedPostProcessingAPIKey`, auto post-process dans `transcribe()` (silencieux, dégradation gracieuse), `applyPostProcessing()` on-demand avec guard + defer.
+  - TranscriptionView : bouton Polish conditionnel sur `postProcessingEnabled`, ProgressView "Polishing…" pendant `isPostProcessing`, reduced-motion respecté, `ultraThinMaterial`, accessibility labels complets.
+  - PreferencesStore : 5 champs post-processing, `postProcessingAPIKey` via Keychain.
+  - Architecture : PostProcessor sans état mutable (api passé à l'appel), injection par protocole préservée, testabilité maximale.
+  - Suggestion non-bloquante : vérifier le model ID `claude-haiku-4-5` à chaque release Anthropic majeure.
+
 ## 2026-05-19 — Sprint 4 J1 — AI post-processing: PostProcessor service + settings UI (coder + reviewer)
 - Objectif: Issue #55 — PostProcessor service + UI settings pour le post-traitement AI (J1/2)
 - Statut: ✅ LGTM
