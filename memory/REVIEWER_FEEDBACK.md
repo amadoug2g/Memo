@@ -1,33 +1,32 @@
 Itération: 2
-Statut: LGTM
+Statut: BLOQUANT
 
 Session 2026-05-20 — AI post-processing J2 : câblage PostProcessor dans AppState + bouton Polish (#55, J2)
 
-## Bug bloquant corrigé (itération 1 → itération 2)
+## Bug itération 1 corrigé
 
-**Option A appliquée correctement.** `api: PostProcessingAPI` est maintenant un paramètre de `PostProcessing.process(...)` au lieu d'être stocké comme constante dans `PostProcessor`. Vérifications :
+Option A appliquée correctement. `api: PostProcessingAPI` est maintenant un paramètre de `PostProcessing.process(...)` au lieu d'être stocké comme constante dans `PostProcessor`. Les call sites dans `AppState.transcribe()` et `applyPostProcessing()` passent bien `postProcessingAPI` a chaque appel. `MockPostProcessor` capture `lastAPI`. Deux nouveaux tests verifient le forwarding vers `.claude`.
 
-- `PostProcessor` : plus de `private let api` ni d'`init(api:)` — confirmé par grep.
-- `AppState.transcribe()` ligne 219 : passe `api: postProcessingAPI` au moment de l'appel.
-- `AppState.applyPostProcessing()` ligne 264 : passe `api: postProcessingAPI` au moment de l'appel.
-- `MockPostProcessor` : capture `lastAPI: PostProcessingAPI?`.
-- Nouveaux tests : `test_autoPostProcessing_forwardsCorrectAPI()` et `test_applyPostProcessing_forwardsCorrectAPI()` assertent `.claude` correctement transmis.
+## Probleme bloquant : CI "Swift Tests" en echec
 
-## Qualité globale
+Fichier: PR #63 / check run https://github.com/amadoug2g/Memo/actions/runs/26156212824/job/76936164867
+Action requise: Consulter les logs CI, identifier et corriger la cause de l'echec, puis pousser le correctif sur `claude/tender-einstein-1gwQi`.
 
-Tous les critères du DAILY_GOAL.md sont satisfaits :
-- PostProcessor service avec protocole injectable : ✅
-- Settings UI presets + custom prompt conditionnel : ✅
-- Toggle enable/disable : ✅
-- Tests mock ≥4 : ✅ (12 PostProcessorTests + 10 AppStateTests post-processing = 22+)
-- make test : non exécutable sur Linux (Swift absent) — cohérent avec toutes les sessions précédentes
+Les deux runs CI declenchees par les pushes de cette branche echouent sur "Swift Tests" (conclusion: failure, duree ~22s chacune). Le code source est logiquement coherent (protocole, implementation, mocks, call sites, tests alignes sur la nouvelle signature `api: PostProcessingAPI`), mais la CI macOS-14 rejette le build ou les tests.
 
-Points positifs supplémentaires :
-- Élimination des force-unwrap (URL API test via guard let)
-- Renommages de variables locales propres (m→modeOption, i→barIndex, s→display, c→result)
-- Reduced-motion respecté dans TranscriptionView (animation conditionnelle + onAppear guard)
-- Accessibility labels sur tous les éléments interactifs (Polish button, SecureField, custom prompt)
-- URLSession.ephemeral pour les appels réseau (pas de cache sensible)
-- Keychain correct pour postProcessingAPIKey (delete quand vide, save sinon)
+Hypotheses a investiguer (par ordre de probabilite) :
+1. Erreur de compilation subtile non detectable par lecture statique — consulter les logs pour le message d'erreur exact.
+2. Cache SPM contamine : la cle de cache (Package.swift + Package.resolved) n'a pas change en J2 — le runner a pu restaurer un `.build` compile contre l'ancien protocole. Correctif : ajouter un suffixe de version a la cle de cache dans `.github/workflows/ci.yml` pour invalider le cache J1.
+3. Echec runtime d'un test async sur macOS 14.
 
-Suggestion non-bloquante : vérifier le model ID `claude-haiku-4-5` lors du premier test en production (le modèle Haiku courant est `claude-haiku-4-5` — correct au 2026-05-20, mais à re-vérifier à chaque release majeure Anthropic).
+Note : c'est la 3e et derniere iteration possible. Si la CI ne passe pas apres correction, le travail sera note Abandonne dans SESSION_LOG.md et SPRINT_CURRENT.md.
+
+## Qualite du code (hors CI — conforme aux criteres du DAILY_GOAL.md)
+
+- PostProcessor service avec protocole injectable : oui
+- Settings UI presets + custom prompt conditionnel : oui
+- Toggle enable/disable : oui
+- Tests mock >= 4 : oui (13 PostProcessorTests + 10 AppStateTests post-processing)
+- Architecture sans etat mutable dans PostProcessor (api passe a l'appel) : oui
+- Securite (cles Keychain, URLSession.ephemeral) : oui
+- Accessibility labels complets : oui
