@@ -1,36 +1,74 @@
 Itération: 1
-Statut: LGTM
+Statut: BLOQUANT
 
-Session 2026-05-19 — PostProcessor service + settings UI pour AI post-processing (#55, J1)
+Session 2026-05-20 — AI post-processing J2 : câblage PostProcessor dans AppState + bouton Polish (#55, J2)
 
-## Evaluation
+## Problème bloquant
 
-### Correctness
-- PostProcessor.swift : protocole PostProcessing injectable, enums PostProcessingPrompt (6 presets) et PostProcessingAPI (openAI/claude) conformes Identifiable/CaseIterable, implémentation concrète avec callOpenAI (gpt-4o-mini) et callClaude (claude-haiku-4-5), validation apiKey et prompt avant tout appel réseau, gestion httpError/emptyResponse/emptyPrompt correcte.
-- PreferencesStore.swift : 5 champs post-processing ajoutés (enabled, api, prompt, customPrompt, apiKey), load/save étendu correctement, postProcessingAPIKey via Keychain (save/delete symétrique).
-- AppState.swift : 5 @Published vars ajoutés, chargement UserDefaults dans init (loadFast), Keychain en Task @MainActor différé, savePreferences() étendu avec tous les champs.
-- SettingsView.swift : section "Post-processing" complète — toggle enable/disable, Picker prompts prédéfinis, TextField prompt custom conditionnel (affiché uniquement si .custom sélectionné), Picker API segmented, SecureField clé API secondaire, loadFromAppState() et save() câblés pour tous les champs post-processing.
+**PostProcessingAPI preference ignorée au runtime — la sélection "Anthropic (Claude Haiku)" est non-fonctionnelle.**
 
-### Sprint Alignment
-Contribue directement à l'objectif Sprint 4 "AI post-processing (#55)" — J1 entièrement couverte.
+Fichier: `Sources/Memo/Models/AppState.swift` ligne 105
+Fichier: `Sources/Memo/Services/PostProcessor.swift` ligne 92 et 102
 
-### Security
-- Aucune clé API en dur dans le code source.
-- postProcessingAPIKey stockée via KeychainService (clé "postProcessingAPIKey"), supprimée si vide — pattern identique à openAIApiKey.
-- URLSession.ephemeral utilisé (pas de cache disque).
+### Description
 
-### Swift Idioms
-- @MainActor correct sur AppState et tâche Keychain différée.
-- async/await utilisé correctement dans PostProcessor.process().
-- Pas de force-unwrap dangereux (guard let/if let systématique).
-- preconditionFailure() sur URL invalide (URL statique connue au compile time — acceptable).
+`PostProcessor` stocke son `api: PostProcessingAPI` comme constante immuable (`private let api`) fixée à la construction. `AppState.init()` crée `PostProcessor()` une seule fois avec la valeur par défaut `.openAI`. Même si l'utilisateur sélectionne "Anthropic (Claude Haiku)" dans les Settings et sauvegarde, le `postProcessor` stocké dans `AppState` pointe toujours vers OpenAI — le code path Claude est inaccessible en production.
 
-### Tests
-12 tests couvrent : mock protocol, forwarding inputs, error propagation, enum uniqueness (labels), error descriptions, validation missingAPIKey (vide et whitespace), emptyPrompt (vide et whitespace), preset systemPrompts non vides. Critère ≥ 4 tests largement dépassé.
+La préférence `postProcessingAPI` est chargée depuis UserDefaults et reflétée dans l'UI, mais elle n'est **jamais passée au service PostProcessor** lors de son instanciation ni lors des appels.
 
-### Make test
-Swift non disponible dans l'environnement Linux — cohérent avec toutes les sessions précédentes. Code vérifié syntaxiquement et logiquement via lecture.
+### Preuve
 
-## Suggestions (non-bloquantes)
-1. La méthode process() sur le protocole prend `prompt: String` (le systemPrompt résolu par l'appelant). J2 devra veiller à passer postProcessingPrompt.systemPrompt (ou postProcessingCustomPrompt pour .custom) et non le rawValue de l'enum — documenter ce point dans AppState lors du câblage J2.
-2. callClaude utilise "claude-haiku-4-5" — à vérifier lors de la mise en production que ce model ID correspond bien au modèle live Anthropic (peut varier selon les déploiements).
+```swift
+// AppState.swift ligne 105 — PostProcessor toujours créé avec .openAI par défaut
+postProcessor: any PostProcessing = PostProcessor(),
+```
+
+```swift
+// AppDelegate.swift ligne 10 — AppState créé sans argument
+let appState = AppState()
+// → PostProcessor(api: .openAI) immuable, peu importe ce que choisit l'utilisateur
+```
+
+```swift
+// PostProcessor.swift ligne 92+102 — api figée à l'init
+private let api: PostProcessingAPI  // impossible à changer après init
+init(api: PostProcessingAPI = .openAI) { self.api = api }
+```
+
+### Action requise
+
+Rendre le service PostProcessor réactif à `postProcessingAPI`. Deux approches acceptables :
+
+**Option A (recommandée)** — Passer l'API au moment de l'appel en paramètre du protocole :
+```swift
+// Modifier le protocole
+protocol PostProcessing: AnyObject {
+    func process(text: String, prompt: String, apiKey: String, api: PostProcessingAPI) async throws -> String
+}
+// PostProcessor n'a plus besoin de stocker api
+// AppState passe appState.postProcessingAPI à chaque appel
+```
+
+**Option B** — Créer un nouveau PostProcessor à chaque appel avec l'API courante :
+```swift
+// Dans transcribe() et applyPostProcessing()
+let processor = PostProcessor(api: postProcessingAPI)
+let result = try? await processor.process(text: text, prompt: systemPrompt, apiKey: apiKey)
+```
+
+**Option C** — Exposer une var settable sur le protocole et la mettre à jour avant chaque appel (moins propre, mais acceptable).
+
+L'option A est préférable car elle préserve la testabilité via MockPostProcessor, élimine l'état mutable dans PostProcessor, et rend l'intention explicite dans les appels.
+
+---
+
+## Points corrects (non-bloquants)
+
+- `isPostProcessing @Published` + ProgressView "Polishing…" dans TranscriptionView : correct
+- Bouton Polish (`wand.and.sparkles`) conditionnel sur `postProcessingEnabled` : correct
+- `applyPostProcessing()` : guard `isEditing && !isPostProcessing`, capture de `inputText` avant Task, defer `isPostProcessing = false` : correct
+- Auto post-process dans `transcribe()` avec `try?` silencieux (dégradation gracieuse) : correct
+- `resolvedPostProcessingPrompt` (preset vs custom) : correct
+- `resolvedPostProcessingAPIKey` (fallback sur openAIApiKey) : correct
+- 8 tests AppStateTests couvrant les nouveaux comportements : logiquement corrects
+- MockPostProcessor dans Mocks.swift : correct
