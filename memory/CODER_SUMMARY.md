@@ -14,13 +14,12 @@ Branche: <feature/YYYYMMDD-slug>
 
 ---
 
-Objectif: Issue #55 — PostProcessor service + UI settings pour le post-traitement AI (implémentation complète J1)
+Objectif: Issue #55 — AI post-processing J2 : câblage PostProcessor dans AppState + bouton Polish dans TranscriptionView + tests d'intégration AppState
 Changements:
-- Sources/Memo/Services/PostProcessor.swift (créé, commit précédent) — protocole PostProcessing, enums PostProcessingPrompt (6 presets) et PostProcessingAPI (openAI/claude), implémentation PostProcessor avec callOpenAI (gpt-4o-mini) et callClaude (claude-haiku-4-5), gestion d'erreurs PostProcessorError
-- Sources/Memo/Services/PreferencesStore.swift (commit précédent) — 5 champs post-processing, load/save Keychain étendu
-- Sources/Memo/Models/AppState.swift (commit précédent) — 5 @Published vars, chargement prefs+Keychain, savePreferences() étendu
-- Sources/Memo/Views/SettingsView.swift — section "Post-processing" complète : toggle enable/disable, Picker prompts prédéfinis, TextField prompt custom (conditionnel), Picker API (segmented), SecureField clé API secondaire ; loadFromAppState() et save() câblés pour tous les champs post-processing
-- Tests/MemoTests/PostProcessorTests.swift — 12 tests au total : 7 initiaux (mock protocol, forwarding, error propagation, enum uniqueness, error descriptions) + 5 nouveaux (validation PostProcessor : clé vide → missingAPIKey, clé whitespace → missingAPIKey, prompt vide → emptyPrompt, prompt whitespace → emptyPrompt, tous les presets ont un systemPrompt non vide)
-Tests: Swift non disponible dans l'environnement Linux — make test non exécutable ; code vérifié syntaxiquement et logiquement via lecture
-Blockers: aucun — J1 entièrement complétée (service + UI + tests)
-Branche: claude/tender-einstein-DdQjb
+- Sources/Memo/Models/AppState.swift (commit 5a4f8f5, déjà sur branche) — injection PostProcessor, auto post-process dans transcribe(), applyPostProcessing() on-demand, isPostProcessing @Published, resolvedPostProcessingPrompt, resolvedPostProcessingAPIKey
+- Sources/Memo/Views/TranscriptionView.swift (commit 5a4f8f5, déjà sur branche) — bouton Polish (wand.and.sparkles) dans le footer quand postProcessingEnabled, ProgressView "Polishing…" pendant isPostProcessing, réductions de motion respectées
+- Tests/MemoTests/Mocks.swift (commit 5a4f8f5) — MockPostProcessor consolidé dans Mocks.swift
+- Tests/MemoTests/AppStateTests.swift (commit 4097d3b, cette session) — 8 nouveaux tests d'intégration : auto post-process pendant transcription, skip quand désactivé, applyPostProcessing() met à jour le texte, no-op guard quand pas en editing, resolvedPostProcessingPrompt (preset + custom), resolvedPostProcessingAPIKey (fallback + clé propre)
+Tests: Swift non disponible dans l'environnement Linux — make test non exécutable ; code vérifié syntaxiquement et logiquement via lecture. Total estimé : 58+ tests (46 originaux + 6 HistoryStore + 12 PostProcessor + 8 AppState post-processing + comptage approximatif des autres)
+Blockers: aucun — J2 entièrement complétée (câblage + UI + tests intégration)
+Branche: claude/tender-einstein-1gwQi
