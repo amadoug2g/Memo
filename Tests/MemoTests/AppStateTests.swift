@@ -277,6 +277,56 @@ final class AppStateTests: XCTestCase {
         XCTAssertFalse(state.isPostProcessing, "isPostProcessing must be false after completion")
     }
 
+    func test_autoPostProcessing_forwardsCorrectAPI() async {
+        let recorder = MockAudioRecorder()
+        let transcriber = MockTranscriber()
+        transcriber.result = .success("raw text")
+        let postProcessor = MockPostProcessor()
+        postProcessor.result = .success("processed")
+        let state = AppState(
+            audioRecorder: recorder,
+            transcriber: transcriber,
+            postProcessor: postProcessor
+        )
+        state.openAIApiKey = "sk-test"
+        state.postProcessingEnabled = true
+        state.postProcessingPrompt = .cleanGrammar
+        state.postProcessingAPI = .claude
+
+        state.startRecording()
+        await waitForState(.recording, on: state)
+        state.recordingStartedAt = Date().addingTimeInterval(-1)
+        state.stopRecording()
+
+        await waitForState(.editing, on: state)
+        XCTAssertEqual(postProcessor.lastAPI, .claude, "AppState must pass postProcessingAPI to the processor")
+    }
+
+    func test_applyPostProcessing_forwardsCorrectAPI() async {
+        let postProcessor = MockPostProcessor()
+        postProcessor.result = .success("Polished text")
+        let state = AppState(
+            audioRecorder: MockAudioRecorder(),
+            transcriber: MockTranscriber(),
+            postProcessor: postProcessor
+        )
+        state.openAIApiKey = "sk-test"
+        state.postProcessingEnabled = true
+        state.postProcessingPrompt = .cleanGrammar
+        state.postProcessingAPI = .claude
+        state.transcribedText = "raw input"
+        state.recordingState = .editing
+
+        state.applyPostProcessing()
+
+        let deadline = Date().addingTimeInterval(2)
+        while state.transcribedText == "raw input" && Date() < deadline {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertEqual(postProcessor.lastAPI, .claude, "applyPostProcessing must pass postProcessingAPI to the processor")
+    }
+
     func test_applyPostProcessing_noopWhenNotEditing() async {
         let postProcessor = MockPostProcessor()
         let state = AppState(
