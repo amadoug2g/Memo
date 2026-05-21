@@ -26,6 +26,9 @@ struct SettingsView: View {
     @State private var postProcessingCustomPrompt: String = ""
     @State private var postProcessingAPIKey: String = ""
 
+    // Local transcription
+    @State private var useLocalTranscription: Bool = false
+
     private let languages: [(label: String, code: String)] = [
         ("Auto-detect",  "auto"),
         ("English",      "en"),
@@ -124,6 +127,21 @@ struct SettingsView: View {
                 Text("Hotkey")
             }
 
+            // MARK: Local Transcription
+            Section {
+                Toggle("Use local transcription (offline)", isOn: $useLocalTranscription)
+                Text("Transcribe audio on-device using a local Whisper model. No API key required. Requires macOS 14+ and Apple Silicon.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if useLocalTranscription {
+                    localModelStatusRow
+                }
+            } header: {
+                Text("Local Transcription")
+            }
+
             // MARK: Post-processing
             Section {
                 Toggle("Enable AI post-processing", isOn: $postProcessingEnabled)
@@ -197,6 +215,51 @@ struct SettingsView: View {
         .onAppear {
             loadFromAppState()
             bringToFront()
+        }
+    }
+
+    // MARK: - Local model status row
+
+    @ViewBuilder
+    private var localModelStatusRow: some View {
+        HStack {
+            switch appState.localModelState {
+            case .notDownloaded:
+                Text("Model not downloaded")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                Spacer()
+                Button("Download Model") {
+                    appState.downloadLocalModel()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+            case .downloading(let progress):
+                Text("Downloading… \(Int(progress * 100))%")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                Spacer()
+                ProgressView(value: progress)
+                    .frame(width: 80)
+
+            case .ready:
+                Label("Model ready", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.caption)
+
+            case .failed(let message):
+                Label(message, systemImage: "xmark.circle.fill")
+                    .foregroundStyle(.red)
+                    .font(.caption)
+                    .lineLimit(2)
+                Spacer()
+                Button("Retry") {
+                    appState.downloadLocalModel()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
         }
     }
 
@@ -292,6 +355,7 @@ struct SettingsView: View {
         postProcessingPrompt      = appState.postProcessingPrompt
         postProcessingCustomPrompt = appState.postProcessingCustomPrompt
         postProcessingAPIKey      = appState.postProcessingAPIKey
+        useLocalTranscription     = appState.useLocalTranscription
     }
 
     private func save() {
@@ -306,6 +370,7 @@ struct SettingsView: View {
         appState.postProcessingPrompt      = postProcessingPrompt
         appState.postProcessingCustomPrompt = postProcessingCustomPrompt
         appState.postProcessingAPIKey      = postProcessingAPIKey
+        appState.useLocalTranscription     = useLocalTranscription
         let ok = appState.savePreferences()
 
         if ok {
