@@ -17,6 +17,9 @@ struct PreferencesStore {
     var postProcessingCustomPrompt: String
     var postProcessingAPIKey: String
 
+    // Local transcription
+    var useLocalTranscription: Bool
+
     init(
         apiKey: String = "",
         language: String = "auto",
@@ -28,7 +31,8 @@ struct PreferencesStore {
         postProcessingAPI: PostProcessingAPI = .openAI,
         postProcessingPrompt: PostProcessingPrompt = .cleanGrammar,
         postProcessingCustomPrompt: String = "",
-        postProcessingAPIKey: String = ""
+        postProcessingAPIKey: String = "",
+        useLocalTranscription: Bool = false
     ) {
         self.apiKey = apiKey
         self.language = language
@@ -41,6 +45,7 @@ struct PreferencesStore {
         self.postProcessingPrompt = postProcessingPrompt
         self.postProcessingCustomPrompt = postProcessingCustomPrompt
         self.postProcessingAPIKey = postProcessingAPIKey
+        self.useLocalTranscription = useLocalTranscription
     }
 
     /// Full load — includes Keychain (10–50ms). Use only when launch latency is not a concern.
@@ -77,6 +82,7 @@ struct PreferencesStore {
             ppPrompt = p
         }
         let ppCustomPrompt = ud.string(forKey: "postProcessingCustomPrompt") ?? ""
+        let useLocal = ud.bool(forKey: "useLocalTranscription")
 
         return PreferencesStore(
             apiKey: "",
@@ -89,7 +95,8 @@ struct PreferencesStore {
             postProcessingAPI: ppAPI,
             postProcessingPrompt: ppPrompt,
             postProcessingCustomPrompt: ppCustomPrompt,
-            postProcessingAPIKey: ""
+            postProcessingAPIKey: "",
+            useLocalTranscription: useLocal
         )
     }
 
@@ -125,6 +132,7 @@ struct PreferencesStore {
         ud.set(postProcessingAPI.rawValue,          forKey: "postProcessingAPI")
         ud.set(postProcessingPrompt.rawValue,       forKey: "postProcessingPrompt")
         ud.set(postProcessingCustomPrompt,          forKey: "postProcessingCustomPrompt")
+        ud.set(useLocalTranscription,               forKey: "useLocalTranscription")
 
         return whisperOK && ppKeyOK
     }

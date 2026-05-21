@@ -64,6 +64,10 @@ class AppState: ObservableObject {
     @Published var postProcessingCustomPrompt: String = ""
     @Published var postProcessingAPIKey: String = ""
 
+    // Local transcription
+    @Published var useLocalTranscription: Bool = false
+    @Published var localModelState: LocalModelState = .notDownloaded
+
     // App status
     @Published var hotkeyConflict: Bool = false
 
@@ -78,17 +82,25 @@ class AppState: ObservableObject {
 
     // Private services — injected for testability
     private let audioRecorder: any AudioRecording
-    private let transcriber: any Transcribing
+    private let whisperService: any Transcribing
+    private let localWhisperService: LocalWhisperService
     let historyStore: any HistoryStoring
     var recordingStartedAt: Date?
+
+    /// Returns the active transcriber based on the user's preference.
+    private var transcriber: any Transcribing {
+        useLocalTranscription ? localWhisperService : whisperService
+    }
 
     init(
         audioRecorder: any AudioRecording = AudioRecorder(),
         transcriber: any Transcribing = WhisperService(),
+        localWhisperService: LocalWhisperService = LocalWhisperService(),
         historyStore: any HistoryStoring = HistoryStore()
     ) {
         self.audioRecorder = audioRecorder
-        self.transcriber = transcriber
+        self.whisperService = transcriber
+        self.localWhisperService = localWhisperService
         self.historyStore = historyStore
 
         // Load UserDefaults synchronously — fast (< 1ms), needed before first render.
@@ -102,6 +114,7 @@ class AppState: ObservableObject {
         postProcessingAPI = prefs.postProcessingAPI
         postProcessingPrompt = prefs.postProcessingPrompt
         postProcessingCustomPrompt = prefs.postProcessingCustomPrompt
+        useLocalTranscription = prefs.useLocalTranscription
 
         // The level timer fires on the main RunLoop (scheduled from @MainActor context),
         // so assumeIsolated is safe and avoids a Task allocation every 50ms.
@@ -240,8 +253,26 @@ class AppState: ObservableObject {
             postProcessingAPI: postProcessingAPI,
             postProcessingPrompt: postProcessingPrompt,
             postProcessingCustomPrompt: postProcessingCustomPrompt,
-            postProcessingAPIKey: postProcessingAPIKey
+            postProcessingAPIKey: postProcessingAPIKey,
+            useLocalTranscription: useLocalTranscription
         ).save()
+    }
+
+    // MARK: - Local model management
+
+    /// Triggers a download and load of the local Whisper model.
+    /// Updates `localModelState` as the download progresses.
+    func downloadLocalModel() {
+        localModelState = .downloading(progress: 0)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await self.localWhisperService.loadModel()
+            } catch {
+                // Swallow — modelState is updated inside loadModel().
+            }
+            self.localModelState = self.localWhisperService.modelState
+        }
     }
 
     // MARK: - State machine

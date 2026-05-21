@@ -12,6 +12,12 @@ Format par entrée :
 
 ---
 
+## 2026-05-21
+- Objectif: Sprint 4 J3 — Local Whisper fallback (#32) : WhisperKit integration + LocalWhisperService + Settings UI + AppState wiring
+- Statut: ✅ LGTM
+- Tests: swift non disponible sur Linux — 14 nouveaux tests LocalWhisperServiceTests vérifiés syntaxiquement et logiquement (protocol conformance, auto-load, language forwarding, error propagation, state transitions, LocalModelState equatable)
+- Notes: LocalWhisperService implémente Transcribing via WhisperEngineProtocol (injectable). WhisperKitEngine réel sous #if canImport(WhisperKit), stub no-op pour Linux/CI. Package.swift: dépendance WhisperKit 0.9.0, condition .when(platforms: [.macOS]) correcte. AppState: useLocalTranscription, localModelState, transcriber dynamique. PreferencesStore: useLocalTranscription persisté UserDefaults. SettingsView: section "Local Transcription" avec toggle + statusRow (4 états). Suggestion non-bloquante: vérifier la signature exacte de WhisperKitConfig() contre l'API WhisperKit 0.9.x lors d'un build macOS.
+
 ## 2026-04-16
 - Objectif: Setup agent workflow (CLAUDE.md, agents, memory, CI)
 - Statut: ✅ Setup initial complété — mergé sur main (PR #6)
