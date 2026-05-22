@@ -17,6 +17,12 @@ chmod +x "$MACOS/Memo"
 
 cp -r "$REPO/.build/release/Memo_Memo.bundle" "$RESOURCES/"
 
+BUNDLE_PLIST="$RESOURCES/Memo_Memo.bundle/Contents/Info.plist"
+if [ -f "$BUNDLE_PLIST" ]; then
+  /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string com.amadoug2g.memo.resources" "$BUNDLE_PLIST" 2>/dev/null \
+    || /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.amadoug2g.memo.resources" "$BUNDLE_PLIST"
+fi
+
 ICNS="$RESOURCES/AppIcon.icns"
 if [ ! -f "$ICNS" ]; then
   echo "  → Generating placeholder icon…"
