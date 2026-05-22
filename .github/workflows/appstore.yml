@@ -110,6 +110,7 @@ jobs:
           security import "$INSTALLER_CERT_PATH" \
             -k "$KEYCHAIN_PATH" \
             -P "$INSTALLER_CERT_PASSWORD" \
+            -T /usr/bin/productsign \
             -T /usr/bin/productbuild \
             -f pkcs12
 
