@@ -117,13 +117,27 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"' | xargs)
           security default-keychain -s "$KEYCHAIN_PATH"
 
+          echo "→ All identities in keychain:"
+          security find-identity -v "$KEYCHAIN_PATH"
+
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -1 | awk -F'"' '{print $2}')
           echo "→ App signing identity: $SIGNING_IDENTITY"
           echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> "$GITHUB_ENV"
 
-          INSTALLER_SIGNING_IDENTITY=$(security find-identity -v "$KEYCHAIN_PATH" | grep -i "installer" | head -1 | awk -F'"' '{print $2}')
+          if [ -z "$SIGNING_IDENTITY" ]; then
+            echo "::error::No app signing identity found. Check APP_STORE_CERT_P12."
+            exit 1
+          fi
+
+          INSTALLER_SIGNING_IDENTITY=$(security find-identity -v "$KEYCHAIN_PATH" | grep -iE "installer|3rd Party Mac Developer" | head -1 | awk -F'"' '{print $2}')
           echo "→ Installer signing identity: $INSTALLER_SIGNING_IDENTITY"
           echo "INSTALLER_SIGNING_IDENTITY=$INSTALLER_SIGNING_IDENTITY" >> "$GITHUB_ENV"
+
+          if [ -z "$INSTALLER_SIGNING_IDENTITY" ]; then
+            echo "::error::No installer signing identity found. Check APP_STORE_INSTALLER_CERT_P12."
+            security find-identity -v "$KEYCHAIN_PATH"
+            exit 1
+          fi
 
       - name: Download app bundle artifact
         uses: actions/download-artifact@v4
@@ -145,6 +159,7 @@ jobs:
           codesign --verify --verbose Memo.app
 
       - name: Create installer package
+        timeout-minutes: 5
         run: |
           security unlock-keychain -p "" "$RUNNER_TEMP/appstore.keychain-db"
           bash scripts/package-pkg.sh \
