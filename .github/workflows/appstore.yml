@@ -15,9 +15,68 @@ on:
 permissions:
   contents: read
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1 — Build
+#   Compiles a release binary, assembles Memo.app, and uploads it as an
+#   artifact so later stages don't need to rebuild.
+# ─────────────────────────────────────────────────────────────────────────────
 jobs:
-  upload:
-    name: Build, sign, and upload to App Store Connect
+  build:
+    name: "Stage 1 — Build"
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Select Xcode
+        run: |
+          if [ -d /Applications/Xcode_16.2.app ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          elif [ -d /Applications/Xcode_16.1.app ]; then
+            sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+          fi
+          xcodebuild -version
+          swift --version
+
+      - name: Cache SPM
+        uses: actions/cache@v5
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-xcode162-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-xcode162-
+
+      - name: Set version and build number
+        run: |
+          /usr/libexec/PlistBuddy \
+            -c "Set :CFBundleShortVersionString ${{ github.event.inputs.version }}" \
+            Memo.app/Contents/Info.plist
+          /usr/libexec/PlistBuddy \
+            -c "Set :CFBundleVersion ${{ github.event.inputs.build_number }}" \
+            Memo.app/Contents/Info.plist
+          echo "→ Version: ${{ github.event.inputs.version }} (build ${{ github.event.inputs.build_number }})"
+
+      - name: Build release
+        run: swift build -c release
+
+      - name: Package app bundle
+        run: bash scripts/package-app.sh
+
+      - name: Upload app bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Memo-app
+          path: Memo.app
+          retention-days: 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2 — Sign & Package
+#   Downloads Memo.app, signs it with Apple Distribution certificate, and
+#   wraps it into a .pkg installer ready for App Store Connect upload.
+# ─────────────────────────────────────────────────────────────────────────────
+  sign-and-package:
+    name: "Stage 2 — Sign & Package"
+    needs: build
     runs-on: macos-14
 
     steps:
@@ -50,31 +109,17 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"' | xargs)
           security default-keychain -s "$KEYCHAIN_PATH"
 
-          echo "→ Available signing identities:"
-          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
-
           SIGNING_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -1 | awk -F'"' '{print $2}')
-          echo "→ Using identity: $SIGNING_IDENTITY"
+          echo "→ Signing identity: $SIGNING_IDENTITY"
           echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> "$GITHUB_ENV"
 
-      - name: Set version and build number
-        run: |
-          /usr/libexec/PlistBuddy \
-            -c "Set :CFBundleShortVersionString ${{ github.event.inputs.version }}" \
-            Memo.app/Contents/Info.plist
-          /usr/libexec/PlistBuddy \
-            -c "Set :CFBundleVersion ${{ github.event.inputs.build_number }}" \
-            Memo.app/Contents/Info.plist
-          echo "→ Version: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Memo.app/Contents/Info.plist)"
-          echo "→ Build:   $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Memo.app/Contents/Info.plist)"
+      - name: Download app bundle artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Memo-app
+          path: Memo.app
 
-      - name: Build release
-        run: swift build -c release
-
-      - name: Package app bundle
-        run: bash scripts/package-app.sh
-
-      - name: Sign with Apple Distribution certificate
+      - name: Sign app with Apple Distribution certificate
         run: |
           security unlock-keychain -p "" "$RUNNER_TEMP/appstore.keychain-db"
 
@@ -84,7 +129,7 @@ jobs:
             --entitlements Memo.entitlements \
             Memo.app
 
-          echo "→ Verifying app signature"
+          echo "→ Verifying signature"
           codesign --verify --verbose Memo.app
 
       - name: Create installer package
@@ -93,6 +138,29 @@ jobs:
           bash scripts/package-pkg.sh \
             "${{ github.event.inputs.version }}" \
             "$SIGNING_IDENTITY"
+
+      - name: Upload installer package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Memo-pkg
+          path: Memo-v${{ github.event.inputs.version }}.pkg
+          retention-days: 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 3 — Upload to TestFlight
+#   Downloads the signed .pkg and submits it to App Store Connect.
+#   The build will appear in TestFlight once Apple processes it (~5–30 min).
+# ─────────────────────────────────────────────────────────────────────────────
+  upload:
+    name: "Stage 3 — Upload to TestFlight"
+    needs: sign-and-package
+    runs-on: macos-14
+
+    steps:
+      - name: Download installer package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Memo-pkg
 
       - name: Upload to App Store Connect
         env:
