@@ -55,11 +55,57 @@ fi
 echo "  → Final Memo_Memo.bundle Info.plist:"
 /usr/libexec/PlistBuddy -c "Print" "$BUNDLE_PLIST" | sed 's/^/      /'
 
-ICNS="$RESOURCES/AppIcon.icns"
-if [ ! -f "$ICNS" ]; then
-  echo "  → Generating placeholder icon…"
-  "$REPO/scripts/generate-icon.sh"
-fi
+# Always generate icon so the iconset directory exists for actool
+echo "  → Generating app icon"
+"$REPO/scripts/generate-icon.sh"
+
+# Compile asset catalog (required for App Store — produces Assets.car)
+echo "  → Compiling asset catalog"
+ICONSET_DIR="$REPO/.build/AppIcon.iconset"
+XCASSETS_DIR="$REPO/.build/AppIcon.xcassets"
+APPICONSET_DIR="$XCASSETS_DIR/AppIcon.appiconset"
+mkdir -p "$APPICONSET_DIR"
+
+cp "$ICONSET_DIR"/*.png "$APPICONSET_DIR/"
+
+cat > "$XCASSETS_DIR/Contents.json" <<'XCASSETS_EOF'
+{"info": {"author": "xcode", "version": 1}}
+XCASSETS_EOF
+
+cat > "$APPICONSET_DIR/Contents.json" <<'CONTENTS_EOF'
+{
+  "images": [
+    {"size": "16x16",   "scale": "1x", "idiom": "mac", "filename": "icon_16x16.png"},
+    {"size": "16x16",   "scale": "2x", "idiom": "mac", "filename": "icon_16x16@2x.png"},
+    {"size": "32x32",   "scale": "1x", "idiom": "mac", "filename": "icon_32x32.png"},
+    {"size": "32x32",   "scale": "2x", "idiom": "mac", "filename": "icon_32x32@2x.png"},
+    {"size": "128x128", "scale": "1x", "idiom": "mac", "filename": "icon_128x128.png"},
+    {"size": "128x128", "scale": "2x", "idiom": "mac", "filename": "icon_128x128@2x.png"},
+    {"size": "256x256", "scale": "1x", "idiom": "mac", "filename": "icon_256x256.png"},
+    {"size": "256x256", "scale": "2x", "idiom": "mac", "filename": "icon_256x256@2x.png"},
+    {"size": "512x512", "scale": "1x", "idiom": "mac", "filename": "icon_512x512.png"},
+    {"size": "512x512", "scale": "2x", "idiom": "mac", "filename": "icon_512x512@2x.png"}
+  ],
+  "info": {"author": "xcode", "version": 1}
+}
+CONTENTS_EOF
+
+xcrun actool \
+  --output-format human-readable-text \
+  --notices \
+  --warnings \
+  --output-partial-info-plist "$REPO/.build/assetcatalog.plist" \
+  --app-icon AppIcon \
+  --compress-pngs \
+  --enable-on-demand-resources NO \
+  --target-device mac \
+  --minimum-deployment-target 13.0 \
+  --platform macosx \
+  --product-type com.apple.product-type.application \
+  --compile "$RESOURCES" \
+  "$XCASSETS_DIR"
+
+echo "  → Asset catalog compiled → Assets.car"
 
 if [ -z "${CI:-}" ]; then
   codesign --force --deep --sign - "$APP" 2>/dev/null

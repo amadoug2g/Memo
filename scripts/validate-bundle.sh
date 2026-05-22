@@ -24,6 +24,13 @@ for key in CFBundleIdentifier CFBundleVersion CFBundleShortVersionString \
   check_key "$PLIST" "$key" "Info.plist"
 done
 
+if [ -f "$APP/Contents/Resources/Assets.car" ]; then
+  echo "  ✓ Assets.car present"
+else
+  echo "::error::Missing Assets.car — asset catalog was not compiled"
+  ERRORS=$((ERRORS + 1))
+fi
+
 while IFS= read -r bundle; do
   bundle_plist=$(find "$bundle" -maxdepth 2 -name "Info.plist" 2>/dev/null | head -1)
   name=$(basename "$bundle")
