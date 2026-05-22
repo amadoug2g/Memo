@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import Memo
 
@@ -127,6 +128,45 @@ final class AppStateTests: XCTestCase {
         await waitForState(.editing, on: state)
         XCTAssertEqual(state.transcribedText, "Transcribed text")
         XCTAssertEqual(transcriber.callCount, 1)
+    }
+
+    func test_transcription_alwaysCopiesTextToClipboard() async {
+        let recorder = MockAudioRecorder()
+        let transcriber = MockTranscriber()
+        transcriber.result = .success("clipboard test")
+        let state = AppState(audioRecorder: recorder, transcriber: transcriber)
+        state.openAIApiKey = "sk-test"
+        state.autoPasteEnabled = false  // ensure we're in editing flow, not auto-paste
+
+        state.startRecording()
+        await waitForState(.recording, on: state)
+        state.recordingStartedAt = Date().addingTimeInterval(-1)
+        state.stopRecording()
+
+        await waitForState(.editing, on: state)
+
+        let clipboard = NSPasteboard.general.string(forType: .string)
+        XCTAssertEqual(clipboard, "clipboard test", "Transcribed text must always be copied to clipboard")
+    }
+
+    func test_transcription_clipboardSetEvenWithAutoPaste() async {
+        let recorder = MockAudioRecorder()
+        let transcriber = MockTranscriber()
+        transcriber.result = .success("auto paste text")
+        let state = AppState(audioRecorder: recorder, transcriber: transcriber)
+        state.openAIApiKey = "sk-test"
+        state.autoPasteEnabled = true
+        state.pasteOrchestrator = MockPasteOrchestrator()
+
+        state.startRecording()
+        await waitForState(.recording, on: state)
+        state.recordingStartedAt = Date().addingTimeInterval(-1)
+        state.stopRecording()
+
+        await waitForState(.idle, on: state)
+
+        let clipboard = NSPasteboard.general.string(forType: .string)
+        XCTAssertEqual(clipboard, "auto paste text", "Clipboard must contain transcribed text even when auto-paste triggers")
     }
 
     func test_transcriptionFailure_setsErrorState() async {

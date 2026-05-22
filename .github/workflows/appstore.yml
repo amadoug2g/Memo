@@ -54,6 +54,39 @@ jobs:
             Memo.app/Contents/Info.plist
           echo "→ Version: ${{ github.event.inputs.version }} (build ${{ github.event.inputs.build_number }})"
 
+      - name: Inject Xcode build metadata into Info.plist
+        run: |
+          PLIST="Memo.app/Contents/Info.plist"
+          XCODE_VERSION=$(xcodebuild -version | head -1 | awk '{print $2}')
+          XCODE_BUILD=$(xcodebuild -version | tail -1 | awk '{print $3}')
+          SDK_VERSION=$(xcrun --show-sdk-version --sdk macosx)
+          SDK_NAME="macosx${SDK_VERSION}"
+          SDK_BUILD=$(xcrun --show-sdk-build-version --sdk macosx)
+          OS_BUILD=$(sw_vers -buildVersion)
+
+          for key in CFBundleSupportedPlatforms DTPlatformName DTPlatformVersion \
+                     DTSDKName DTSDKBuild DTXcode DTXcodeBuild DTCompiler BuildMachineOSBuild; do
+            /usr/libexec/PlistBuddy -c "Delete :$key" "$PLIST" 2>/dev/null || true
+          done
+
+          /usr/libexec/PlistBuddy \
+            -c "Add :CFBundleSupportedPlatforms array" \
+            -c "Add :CFBundleSupportedPlatforms:0 string MacOSX" \
+            -c "Add :DTPlatformName string macosx" \
+            -c "Add :DTPlatformVersion string $SDK_VERSION" \
+            -c "Add :DTSDKName string $SDK_NAME" \
+            -c "Add :DTSDKBuild string $SDK_BUILD" \
+            -c "Add :DTXcode string ${XCODE_VERSION//./}" \
+            -c "Add :DTXcodeBuild string $XCODE_BUILD" \
+            -c "Add :DTCompiler string com.apple.compilers.llvm.clang.1_0" \
+            -c "Add :BuildMachineOSBuild string $OS_BUILD" \
+            "$PLIST"
+
+          echo "→ Injected Xcode build metadata:"
+          echo "  Xcode: $XCODE_VERSION ($XCODE_BUILD)"
+          echo "  SDK: $SDK_NAME ($SDK_BUILD)"
+          echo "  Platform: MacOSX"
+
       - name: Build release
         run: swift build -c release
 
@@ -63,11 +96,14 @@ jobs:
       - name: Validate app bundle
         run: bash scripts/validate-bundle.sh
 
+      - name: Tar app bundle (preserves permissions + bundle structure)
+        run: tar -czf Memo.app.tar.gz Memo.app
+
       - name: Upload app bundle artifact
         uses: actions/upload-artifact@v4
         with:
           name: Memo-app
-          path: Memo.app
+          path: Memo.app.tar.gz
           retention-days: 1
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -150,7 +186,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: Memo-app
-          path: Memo.app
+
+      - name: Extract app bundle (restores permissions + bundle structure)
+        run: |
+          tar -xzf Memo.app.tar.gz
+          rm Memo.app.tar.gz
+          echo "→ Binary permissions after extraction:"
+          ls -la Memo.app/Contents/MacOS/Memo
 
       - name: Embed provisioning profile
         env:
@@ -159,18 +201,31 @@ jobs:
           echo "$PROFILE" | base64 --decode > Memo.app/Contents/embedded.provisionprofile
           echo "→ Provisioning profile embedded"
 
-      - name: Sign app with Apple Distribution certificate
+      - name: Strip extended attributes
+        run: |
+          xattr -cr Memo.app
+          echo "→ Quarantine and other xattrs removed"
+
+      - name: Sign app with Apple Distribution certificate (inside-out)
         run: |
           security unlock-keychain -p "" "$RUNNER_TEMP/appstore.keychain-db"
+          KEYCHAIN="$RUNNER_TEMP/appstore.keychain-db"
 
-          codesign --force --deep --options runtime \
+          echo "→ Signing resource bundle (no entitlements)"
+          codesign --force --options runtime \
             --sign "$SIGNING_IDENTITY" \
-            --keychain "$RUNNER_TEMP/appstore.keychain-db" \
+            --keychain "$KEYCHAIN" \
+            Memo.app/Contents/Resources/Memo_Memo.bundle
+
+          echo "→ Signing main app bundle (with entitlements)"
+          codesign --force --options runtime \
+            --sign "$SIGNING_IDENTITY" \
+            --keychain "$KEYCHAIN" \
             --entitlements Memo.entitlements \
             Memo.app
 
           echo "→ Verifying signature"
-          codesign --verify --verbose Memo.app
+          codesign --verify --deep --strict --verbose=2 Memo.app
 
       - name: Create installer package
         timeout-minutes: 5
