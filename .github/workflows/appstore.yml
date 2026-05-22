@@ -18,7 +18,7 @@ permissions:
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 — Build
 #   Compiles a release binary, assembles Memo.app, and uploads it as an
-#   artifact so later stages don't need to rebuild.
+#   artifact so later stages don’t need to rebuild.
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
   build:
@@ -61,6 +61,9 @@ jobs:
 
       - name: Package app bundle
         run: bash scripts/package-app.sh
+
+      - name: Validate app bundle
+        run: bash scripts/validate-bundle.sh
 
       - name: Upload app bundle artifact
         uses: actions/upload-artifact@v4
