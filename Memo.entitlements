@@ -13,5 +13,12 @@
     <!-- Outbound network — required for Whisper API calls -->
     <key>com.apple.security.network.client</key>
     <true/>
+
+    <!-- Must match provisioning profile application identifier for TestFlight -->
+    <key>com.apple.application-identifier</key>
+    <string>Q6J6G98354.com.amadoug2g.memo</string>
+
+    <key>com.apple.developer.team-identifier</key>
+    <string>Q6J6G98354</string>
 </dict>
 </plist>
