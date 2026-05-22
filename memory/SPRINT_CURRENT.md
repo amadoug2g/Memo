@@ -17,7 +17,7 @@
 
 | Jour | Objectif | Issue | Statut |
 |------|----------|-------|--------|
-| J1 — 19/05 | AI post-processing — PostProcessor service + settings UI | #55 | ✅ Fait |
+| J1 — 19/05 | AI post-processing — PostProcessor service + settings UI | #55 | ✅ Fait (review 22/05) |
 | J2 — 20/05 | AI post-processing — wire into AppState + panel toggle | #55 | ⬜ À faire |
 | J3 — 21/05 | Local Whisper — WhisperKit integration + LocalWhisperService | #32 | ✅ Fait |
 | J4 — 22/05 | Onboarding flow — first-launch wizard | #56 | ⬜ À faire |

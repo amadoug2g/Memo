@@ -14,14 +14,13 @@ Branche: <feature/YYYYMMDD-slug>
 
 ---
 
-Objectif: Sprint 4 J3 — Local Whisper fallback (#32) : WhisperKit integration + LocalWhisperService + Settings UI + AppState wiring
+Objectif: Sprint 4 J1 — PostProcessor service + settings UI pour AI post-processing (#55, jour 1/2) — vérification et documentation de l'implémentation existante
 Changements:
-- Sources/Memo/Services/LocalWhisperService.swift (créé) — protocole WhisperEngineProtocol (injectable pour tests), enum LocalWhisperError (4 cas), enum LocalModelState (4 cas, Equatable), classe LocalWhisperService implémentant Transcribing (auto-load model si non prêt, forwarding language, @MainActor modelState), WhisperKitEngine production (#if canImport(WhisperKit)) + stub Linux/CI (#else) ; apiKey ignoré en local
-- Package.swift (modifié) — dépendance WhisperKit 0.9.0 ajoutée, produit WhisperKit conditionnel .when(platforms: [.macOS]) pour ne pas casser Linux CI
-- Sources/Memo/Services/PreferencesStore.swift (modifié) — champ useLocalTranscription (Bool, défaut false), persisté via UserDefaults "useLocalTranscription", chargé dans loadFast(), sauvegardé dans save(), inclus dans init()
-- Sources/Memo/Models/AppState.swift (modifié) — @Published useLocalTranscription + localModelState, private whisperService + localWhisperService séparés, computed var transcriber (switche selon useLocalTranscription), init() étendu (paramètre localWhisperService avec défaut), chargement useLocalTranscription depuis prefs, savePreferences() étendu, downloadLocalModel() async (met à jour localModelState depuis le service)
-- Sources/Memo/Views/SettingsView.swift (modifié) — @State useLocalTranscription, section "Local Transcription" avec Toggle + description + localModelStatusRow conditionnel (4 états : notDownloaded/Download button, downloading/ProgressView, ready/checkmark, failed/retry button), loadFromAppState() et save() câblés pour useLocalTranscription
-- Tests/MemoTests/LocalWhisperServiceTests.swift (créé) — MockWhisperEngine (WhisperEngineProtocol mock avec callCounts, configurable), 14 tests : conformance Transcribing, transcribe avec modèle prêt, auto-load si non prêt, forwarding language (fr), forwarding nil language, propagation erreur moteur, loadModel → state .ready, loadModel → state .failed, isModelReady miroir engine, 4 error descriptions non-nulles, unsupportedPlatform mentionne macOS, modelNotDownloaded mentionne Settings, LocalModelState equatable
-Tests: Swift non disponible dans l'environnement Linux — make test non exécutable ; code vérifié syntaxiquement et logiquement via lecture approfondie de tous les fichiers
-Blockers: aucun — J3 entièrement implémentée (service + Package.swift + AppState + SettingsView + 14 tests)
-Branche: claude/tender-einstein-jV9eS
+- Sources/Memo/Services/PostProcessor.swift (existait déjà, commit 50ccbf7) — protocole PostProcessing injectable, enum PostProcessingPrompt (6 presets : cleanGrammar, formalFrench, translateEnglish, bulletPoints, emailFormat, custom) avec systemPrompt par preset, enum PostProcessingAPI (openAI/claude), enum PostProcessorError (4 cas localisés), classe PostProcessor (dual-API : callOpenAI gpt-4o-mini + callClaude claude-haiku-4-5), validation apiKey et prompt avant tout appel réseau, URLSession.ephemeral
+- Sources/Memo/Views/SettingsView.swift (existait déjà, commit 50ccbf7) — section "Post-processing" complète : Toggle enable/disable, Picker prompts prédéfinis, TextField prompt custom conditionnel, Picker API segmented, SecureField clé API secondaire, loadFromAppState() et save() câblés
+- Sources/Memo/Services/PreferencesStore.swift (existait déjà, commit 50ccbf7) — 5 champs post-processing persistés (UserDefaults + Keychain pour postProcessingAPIKey)
+- Sources/Memo/Models/AppState.swift (existait déjà, commit 50ccbf7) — 5 @Published vars post-processing, chargement UserDefaults dans init, Keychain différé, savePreferences() étendu
+- Tests/MemoTests/PostProcessorTests.swift (existait déjà, commit 50ccbf7) — 12 tests : MockPostProcessor, forwarding inputs, error propagation, enum uniqueness, error descriptions, missingAPIKey (vide et whitespace), emptyPrompt (vide et whitespace), preset systemPrompts non vides
+Tests: Swift non disponible dans l'environnement Linux — make test non exécutable ; implementation vérifiée via lecture des fichiers sources et des tests ; reviewer a validé LGTM lors de la session 2026-05-19
+Blockers: aucun — objectif J1 entièrement implémenté et approuvé (LGTM) dans une session précédente
+Branche: claude/tender-einstein-sDRP6
