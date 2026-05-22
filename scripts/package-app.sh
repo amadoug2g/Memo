@@ -17,14 +17,43 @@ chmod +x "$MACOS/Memo"
 
 cp -r "$REPO/.build/release/Memo_Memo.bundle" "$RESOURCES/"
 
-BUNDLE_PLIST=$(find "$RESOURCES/Memo_Memo.bundle" -maxdepth 2 -name "Info.plist" 2>/dev/null | head -1)
-if [ -n "$BUNDLE_PLIST" ]; then
+BUNDLE_DIR="$RESOURCES/Memo_Memo.bundle"
+echo "  → Memo_Memo.bundle contents:"
+find "$BUNDLE_DIR" -maxdepth 3 | sed 's/^/      /'
+
+BUNDLE_PLIST=$(find "$BUNDLE_DIR" -name "Info.plist" 2>/dev/null | head -1)
+
+if [ -z "$BUNDLE_PLIST" ]; then
+  echo "  → No Info.plist found, creating one at bundle root"
+  BUNDLE_PLIST="$BUNDLE_DIR/Info.plist"
+  cat > "$BUNDLE_PLIST" <<'PLIST_EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.amadoug2g.memo.resources</string>
+    <key>CFBundleName</key>
+    <string>Memo</string>
+    <key>CFBundlePackageType</key>
+    <string>BNDL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+</dict>
+</plist>
+PLIST_EOF
+else
+  echo "  → Found existing Info.plist at $BUNDLE_PLIST"
   /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string com.amadoug2g.memo.resources" "$BUNDLE_PLIST" 2>/dev/null \
     || /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.amadoug2g.memo.resources" "$BUNDLE_PLIST"
-  echo "  → Injected CFBundleIdentifier into Memo_Memo.bundle"
-else
-  echo "  → Warning: No Info.plist found in Memo_Memo.bundle"
 fi
+
+echo "  → Final Memo_Memo.bundle Info.plist:"
+/usr/libexec/PlistBuddy -c "Print" "$BUNDLE_PLIST" | sed 's/^/      /'
 
 ICNS="$RESOURCES/AppIcon.icns"
 if [ ! -f "$ICNS" ]; then
