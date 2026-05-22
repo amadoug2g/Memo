@@ -1,65 +1,56 @@
-# Memo — Roadmap de Publication
+# Memo — Roadmap
 
-**Deadline : 30 avril 2026**
-**Objectif :** GitHub Release (DMG ad-hoc signé) + GitHub Pages (landing page portfolio)
-
----
-
-## Jalons
-
-### Semaine 1 — 16-18 avril 2026 : Infrastructure CI + Distribution
-
-- [x] **CI GitHub Actions** — workflow `swift test` sur push/PR (badge dans README) -- PR #7, 2026-04-17
-- [x] **Script DMG** — `scripts/package-dmg.sh` + `make dmg` -- Sprint 1 J1, 2026-04-17
-- [x] **GitHub Actions release** — `.github/workflows/release.yml` sur tag `v*` -- Sprint 1 J2, 2026-04-20
-
-### Semaine 2 — 21-23 avril 2026 : Landing Page
-
-- [x] **GitHub Pages** — `docs/index.html` + `.github/workflows/pages.yml` -- Sprint 1 J3-J4, 2026-04-20/21
-  - Hero, features grid, how-it-works, download CTA
-  - Dark theme, responsive
-  - Lien vers le release GitHub
-
-### Semaine 3 — 24-28 avril 2026 : Polish + Publication
-
-- [x] **GitHub Release v1.0** — tag `v1.0`, changelog, DMG attache -- Sprint 2, 2026-04-29 (release id 315149842, Memo-v1.0.dmg 1.85 MB)
-- [x] **README polish** — badges CI/release/macOS/license, install instructions -- Sprint 1 J4, 2026-04-21
-- [ ] ~~**Localisation francaise**~~ — reporte hors v1.0 (deadline trop proche)
+**Vision :** Polished indie macOS dictation app with AI post-processing. Free tier (local Whisper) + paid tier (AI refinement).
 
 ---
 
-## Fait (core app complet)
+## Completed
 
-- [x] Raccourci global personnalisable (Carbon)
-- [x] Enregistrement audio (AVFoundation, AAC 16 kHz)
-- [x] Transcription Whisper API (`gpt-4o-mini-transcribe`)
-- [x] Panneau flottant (compact pill + full edit)
-- [x] Collage via CGEvent (⌘V simulation)
-- [x] Clé API dans le Keychain
-- [x] Mode push-to-talk et toggle
-- [x] Auto-paste (sans panneau de relecture)
-- [x] 18 langues supportées (auto-détection)
-- [x] Sandbox + entitlements corrects
-- [x] PrivacyInfo.xcprivacy
-- [x] 46 tests unitaires
-- [x] Makefile (dev/test/app/install/clean)
-- [x] Ad-hoc signing avec préservation TCC
+### v1.0 — Core app (April 2026)
+- [x] Global hotkey (⌥ Space), push-to-talk + toggle modes
+- [x] Audio recording (AVFoundation, AAC 16 kHz)
+- [x] Whisper API transcription (gpt-4o-mini-transcribe)
+- [x] Floating panel (compact pill + full editor)
+- [x] Paste via CGEvent (⌘V simulation)
+- [x] API key in Keychain
+- [x] 18 languages (auto-detection)
+- [x] Sandbox + entitlements + PrivacyInfo.xcprivacy
+- [x] Ad-hoc signing with TCC preservation
 
-### Semaine 4 — 4-11 mai 2026 : Post-Release Polish (Sprint 3)
-
-- [ ] **GitHub Pages verification** — confirmer URL live + CTA fonctionnel
-- [ ] **CI smoke test DMG** — job macos-14 qui monte/verifie le DMG dans release.yml
-- [ ] **Release body enrichi** — inclure CHANGELOG.md dans la GitHub Release via body_path
-- [ ] **Cleanup branches** — supprimer les branches orphelines du remote
-- [ ] **README screenshots** — remplacer placeholders ou retirer la section
+### v1.1 — Infrastructure + Polish (May 2026)
+- [x] CI GitHub Actions (tests + SwiftLint, branch protection)
+- [x] Developer ID signing + Apple notarization (automated in CI)
+- [x] DMG packaging + GitHub Release workflow
+- [x] Landing page (GitHub Pages)
+- [x] Transcription history with search (#33)
+- [x] UI polish — blur, animations, rounded corners, better icons (#45)
+- [x] LICENSE, issue templates, CODEOWNERS, SECURITY.md
+- [x] Dependabot for GitHub Actions
+- [x] Agent workflow connected to GitHub Issues
 
 ---
 
-## Hors scope (v1.0)
+## Sprint 4 — 19-25 mai 2026 : Features + Revenue Prep
 
-- Prefixes de prompt
-- Whisper local (whisper.cpp / WhisperKit)
-- Historique des transcriptions
-- Themes visuels
-- Mac App Store (signature Developer ID requise)
-- Localisation francaise (reporte hors v1.0)
+- [ ] **AI post-processing** (#55) — speak messy → get polished text via Claude/GPT (revenue feature)
+- [ ] **Local Whisper** (#32) — WhisperKit offline transcription (free tier)
+- [ ] **Onboarding flow** (#56) — first-launch wizard
+- [ ] **CI/CD split into stages** (#53) — proper pipeline architecture
+
+## Sprint 5+ — June-July 2026 : Ship to Users
+
+- [ ] **Prompt prefixes** (#31) — Whisper prompt parameter
+- [ ] **Mac App Store** (#54) — listing, screenshots, privacy policy, submit
+- [ ] **Sparkle auto-updates** (#57) — for DMG users
+- [ ] **Visual themes** (#34) — light/dark/system
+- [ ] **French localization** (#35)
+
+---
+
+## Hors scope (v2.0+)
+
+- iOS companion app
+- Meeting mode (system audio transcription)
+- Multi-backend (Deepgram, AssemblyAI)
+- Custom fine-tuned models
+- Team features

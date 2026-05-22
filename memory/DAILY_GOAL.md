@@ -1,32 +1,36 @@
-# Objectif du jour -- 2026-05-04 (Sprint 3, J1)
+# Objectif du jour — 2026-05-19 (Sprint 4, J1)
+**Issue GitHub :** #55
 
 ## Contexte sprint
-Consolider la release v1.0 : verifier GitHub Pages, ameliorer la CI, enrichir la release, nettoyer les branches orphelines.
+Sprint 4 goal : Ship AI post-processing + local Whisper + CI refactor + onboarding.
 
-## Tache
-Verifier que GitHub Pages sert correctement la landing page de Memo, et nettoyer les branches orphelines sur le remote.
+## Tâche
+Implémenter le service `PostProcessor` et l'UI settings pour le post-traitement AI (#55, jour 1/2).
 
-GitHub Pages est le dernier deliverable non verifie de la v1.0. La page devrait etre accessible a https://amadoug2g.github.io/whisper-input/. Le workflow `pages.yml` est configure pour deployer `docs/` sur push to main (filtre path `docs/**`). Si Pages n'est pas actif, documenter les etapes d'activation pour l'humain.
+Créer :
+1. `Sources/Memo/Services/PostProcessor.swift` — protocole `PostProcessing` + implémentation
+   - Envoie le texte transcrit + un prompt système à Claude API ou OpenAI API
+   - Retourne le texte post-traité
+   - Support des deux APIs (choix dans settings)
+2. `Sources/Memo/Views/SettingsView.swift` — ajouter section "Post-processing" :
+   - Dropdown de prompts prédéfinis (clean grammar, formal French, translate to English, bullet points, email format)
+   - Champ texte pour prompt custom
+   - Toggle enable/disable
+   - Sélecteur API (Claude / OpenAI)
+   - Champ clé API secondaire (si différente de Whisper)
+3. Tests : `Tests/MemoTests/PostProcessorTests.swift` avec mock LLM
 
-Branches orphelines a supprimer (5 au total, toutes mergees ou obsoletes) :
-- claude/affectionate-cerf-gMClj
-- claude/tender-einstein-QyVHC
-- claude/affectionate-cerf-DWEYt
-- claude/affectionate-cerf-PScAP
-- claude/affectionate-cerf-26dE4 (PR #19 mergee le 04/05)
+## Critères de succès
+- [ ] `PostProcessor` service créé avec protocole injectable
+- [ ] Settings UI avec prompts prédéfinis + custom
+- [ ] Toggle enable/disable dans les settings
+- [ ] Tests avec mock (au moins 4 tests)
+- [ ] `make test` passe
 
-## Criteres de succes
-- [ ] GitHub Pages status verifie via API GitHub (deployment existe ou non)
-- [ ] Si Pages inactif : instructions d'activation documentees pour l'humain
-- [ ] Si Pages actif : lien CTA vers DMG verifie (pointe vers release existante)
-- [ ] Branches orphelines supprimees du remote
-- [ ] SESSION_LOG.md mis a jour avec l'entree du jour
+## Fichiers concernés
+- `Sources/Memo/Services/PostProcessor.swift` — à créer
+- `Sources/Memo/Views/SettingsView.swift` — à modifier (nouvelle section)
+- `Tests/MemoTests/PostProcessorTests.swift` — à créer
 
-## Fichiers concernes
-- `docs/index.html` -- landing page source
-- `.github/workflows/pages.yml` -- workflow de deploiement Pages
-- `memory/SESSION_LOG.md` -- log de session
-- `memory/SPRINT_CURRENT.md` -- mise a jour statut J1
-
-## Priorite
-Haute -- GitHub Pages est le dernier deliverable v1.0 non confirme. Les branches orphelines sont du nettoyage rapide a faire en meme temps.
+## Priorité
+**Haute** — Feature revenue (#55). J1 de Sprint 4.

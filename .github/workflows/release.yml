@@ -91,18 +91,21 @@ jobs:
 
       - name: Notarize app
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
         run: |
           echo "→ Creating zip for notarization"
           ditto -c -k --keepParent Memo.app Memo-notarize.zip
 
+          mkdir -p ~/.private_keys
+          echo "$ASC_KEY_P8" > ~/.private_keys/AuthKey_${ASC_KEY_ID}.p8
+
           echo "→ Submitting to Apple notarization service"
           xcrun notarytool submit Memo-notarize.zip \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_ID_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
+            --key ~/.private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            --key-id "$ASC_KEY_ID" \
+            --issuer "$ASC_ISSUER_ID" \
             --wait
 
           echo "→ Stapling notarization ticket"
@@ -168,7 +171,7 @@ jobs:
 
           echo "→ Attaching $DMG"
           MOUNT_OUTPUT=$(hdiutil attach "$DMG" -nobrowse -noautoopen)
-          MOUNT_POINT=$(echo "$MOUNT_OUTPUT" | grep -E '/Volumes/' | tail -1 | awk '{print $NF}')
+          MOUNT_POINT=$(echo "$MOUNT_OUTPUT" | grep -oE '/Volumes/.*' | tail -1 | sed 's/[[:space:]]*$//')
 
           echo "→ Mounted at: $MOUNT_POINT"
           ls -la "$MOUNT_POINT"

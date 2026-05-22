@@ -10,13 +10,29 @@ struct PreferencesStore {
     var hotkeyKeyCode: Int
     var hotkeyModifiers: Int
 
+    // Post-processing
+    var postProcessingEnabled: Bool
+    var postProcessingAPI: PostProcessingAPI
+    var postProcessingPrompt: PostProcessingPrompt
+    var postProcessingCustomPrompt: String
+    var postProcessingAPIKey: String
+
+    // Local transcription
+    var useLocalTranscription: Bool
+
     init(
         apiKey: String = "",
         language: String = "auto",
         recordingMode: RecordingMode = .pushToTalk,
         autoPasteEnabled: Bool = false,
         hotkeyKeyCode: Int = 49,
-        hotkeyModifiers: Int = 2048
+        hotkeyModifiers: Int = 2048,
+        postProcessingEnabled: Bool = false,
+        postProcessingAPI: PostProcessingAPI = .openAI,
+        postProcessingPrompt: PostProcessingPrompt = .cleanGrammar,
+        postProcessingCustomPrompt: String = "",
+        postProcessingAPIKey: String = "",
+        useLocalTranscription: Bool = false
     ) {
         self.apiKey = apiKey
         self.language = language
@@ -24,51 +40,100 @@ struct PreferencesStore {
         self.autoPasteEnabled = autoPasteEnabled
         self.hotkeyKeyCode = hotkeyKeyCode
         self.hotkeyModifiers = hotkeyModifiers
+        self.postProcessingEnabled = postProcessingEnabled
+        self.postProcessingAPI = postProcessingAPI
+        self.postProcessingPrompt = postProcessingPrompt
+        self.postProcessingCustomPrompt = postProcessingCustomPrompt
+        self.postProcessingAPIKey = postProcessingAPIKey
+        self.useLocalTranscription = useLocalTranscription
     }
 
     /// Full load — includes Keychain (10–50ms). Use only when launch latency is not a concern.
     static func load() -> PreferencesStore {
         var prefs = loadFast()
         prefs.apiKey = KeychainService.load(forKey: "openAIApiKey") ?? ""
+        prefs.postProcessingAPIKey = KeychainService.load(forKey: "postProcessingAPIKey") ?? ""
         return prefs
     }
 
     /// Fast load — UserDefaults only (< 1ms). Use during app init to avoid blocking the launch path.
     static func loadFast() -> PreferencesStore {
-        let language = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "auto"
+        let ud = UserDefaults.standard
+
+        let language = ud.string(forKey: "selectedLanguage") ?? "auto"
         var recordingMode = RecordingMode.pushToTalk
-        if let raw = UserDefaults.standard.string(forKey: "recordingMode"),
+        if let raw = ud.string(forKey: "recordingMode"),
            let mode = RecordingMode(rawValue: raw) {
             recordingMode = mode
         }
-        let autoPaste = UserDefaults.standard.bool(forKey: "autoPasteEnabled")
-        let kc = UserDefaults.standard.integer(forKey: "hotkeyKeyCode")
-        let km = UserDefaults.standard.integer(forKey: "hotkeyModifiers")
+        let autoPaste = ud.bool(forKey: "autoPasteEnabled")
+        let kc = ud.integer(forKey: "hotkeyKeyCode")
+        let km = ud.integer(forKey: "hotkeyModifiers")
+
+        let ppEnabled = ud.bool(forKey: "postProcessingEnabled")
+        var ppAPI = PostProcessingAPI.openAI
+        if let raw = ud.string(forKey: "postProcessingAPI"),
+           let api = PostProcessingAPI(rawValue: raw) {
+            ppAPI = api
+        }
+        var ppPrompt = PostProcessingPrompt.cleanGrammar
+        if let raw = ud.string(forKey: "postProcessingPrompt"),
+           let p = PostProcessingPrompt(rawValue: raw) {
+            ppPrompt = p
+        }
+        let ppCustomPrompt = ud.string(forKey: "postProcessingCustomPrompt") ?? ""
+        let useLocal = ud.bool(forKey: "useLocalTranscription")
+
         return PreferencesStore(
             apiKey: "",
             language: language,
             recordingMode: recordingMode,
             autoPasteEnabled: autoPaste,
             hotkeyKeyCode: kc > 0 ? kc : 49,
-            hotkeyModifiers: km > 0 ? km : 2048
+            hotkeyModifiers: km > 0 ? km : 2048,
+            postProcessingEnabled: ppEnabled,
+            postProcessingAPI: ppAPI,
+            postProcessingPrompt: ppPrompt,
+            postProcessingCustomPrompt: ppCustomPrompt,
+            postProcessingAPIKey: "",
+            useLocalTranscription: useLocal
         )
     }
 
-    /// Persists all preferences. Returns `false` if the Keychain write fails.
+    /// Persists all preferences. Returns `false` if any Keychain write fails.
     @discardableResult
     func save() -> Bool {
-        let keychainOK: Bool
+        let ud = UserDefaults.standard
+
+        // Keychain: Whisper API key
+        let whisperOK: Bool
         if apiKey.isEmpty {
             KeychainService.delete(forKey: "openAIApiKey")
-            keychainOK = true
+            whisperOK = true
         } else {
-            keychainOK = KeychainService.save(apiKey, forKey: "openAIApiKey")
+            whisperOK = KeychainService.save(apiKey, forKey: "openAIApiKey")
         }
-        UserDefaults.standard.set(language,              forKey: "selectedLanguage")
-        UserDefaults.standard.set(recordingMode.rawValue, forKey: "recordingMode")
-        UserDefaults.standard.set(autoPasteEnabled,       forKey: "autoPasteEnabled")
-        UserDefaults.standard.set(hotkeyKeyCode,          forKey: "hotkeyKeyCode")
-        UserDefaults.standard.set(hotkeyModifiers,        forKey: "hotkeyModifiers")
-        return keychainOK
+
+        // Keychain: post-processing API key
+        let ppKeyOK: Bool
+        if postProcessingAPIKey.isEmpty {
+            KeychainService.delete(forKey: "postProcessingAPIKey")
+            ppKeyOK = true
+        } else {
+            ppKeyOK = KeychainService.save(postProcessingAPIKey, forKey: "postProcessingAPIKey")
+        }
+
+        ud.set(language,               forKey: "selectedLanguage")
+        ud.set(recordingMode.rawValue,  forKey: "recordingMode")
+        ud.set(autoPasteEnabled,        forKey: "autoPasteEnabled")
+        ud.set(hotkeyKeyCode,           forKey: "hotkeyKeyCode")
+        ud.set(hotkeyModifiers,         forKey: "hotkeyModifiers")
+        ud.set(postProcessingEnabled,               forKey: "postProcessingEnabled")
+        ud.set(postProcessingAPI.rawValue,          forKey: "postProcessingAPI")
+        ud.set(postProcessingPrompt.rawValue,       forKey: "postProcessingPrompt")
+        ud.set(postProcessingCustomPrompt,          forKey: "postProcessingCustomPrompt")
+        ud.set(useLocalTranscription,               forKey: "useLocalTranscription")
+
+        return whisperOK && ppKeyOK
     }
 }
