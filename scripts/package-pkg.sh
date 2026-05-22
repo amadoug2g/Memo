@@ -5,16 +5,27 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="${1:?Usage: package-pkg.sh <version> <signing-identity>}"
-SIGNING_IDENTITY="${2:?Usage: package-pkg.sh <version> <signing-identity>}"
+VERSION="${1:?Usage: package-pkg.sh <version> <signing-identity> [keychain-path]}"
+SIGNING_IDENTITY="${2:?Usage: package-pkg.sh <version> <signing-identity> [keychain-path]}"
+KEYCHAIN_PATH="${3:-}"
 PKG="$REPO/Memo-v${VERSION}.pkg"
+UNSIGNED_PKG="$REPO/Memo-v${VERSION}-unsigned.pkg"
 
-echo "→ Creating installer package $PKG"
+echo "→ Building unsigned installer package"
 
 productbuild \
   --component "$REPO/Memo.app" /Applications \
-  --sign "$SIGNING_IDENTITY" \
-  "$PKG"
+  "$UNSIGNED_PKG"
+
+echo "→ Signing with productsign (identity: $SIGNING_IDENTITY)"
+
+SIGN_ARGS=(--sign "$SIGNING_IDENTITY")
+if [ -n "$KEYCHAIN_PATH" ]; then
+  SIGN_ARGS+=(--keychain "$KEYCHAIN_PATH")
+fi
+
+productsign "${SIGN_ARGS[@]}" "$UNSIGNED_PKG" "$PKG"
+rm -f "$UNSIGNED_PKG"
 
 echo "→ Verifying package signature"
 pkgutil --check-signature "$PKG"

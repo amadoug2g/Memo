@@ -164,7 +164,8 @@ jobs:
           security unlock-keychain -p "" "$RUNNER_TEMP/appstore.keychain-db"
           bash scripts/package-pkg.sh \
             "${{ github.event.inputs.version }}" \
-            "$INSTALLER_SIGNING_IDENTITY"
+            "$INSTALLER_SIGNING_IDENTITY" \
+            "$RUNNER_TEMP/appstore.keychain-db"
 
       - name: Upload installer package artifact
         uses: actions/upload-artifact@v4
