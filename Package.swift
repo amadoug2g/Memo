@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
@@ -7,6 +7,7 @@ let package = Package(
     platforms: [
         .macOS(.v13)
     ],
+    swiftLanguageVersions: [.v5],
     dependencies: [
         // WhisperKit: Apple-native on-device speech recognition (Apple Silicon + CoreML).
         // Used by LocalWhisperService for offline transcription fallback.
