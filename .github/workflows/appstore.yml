@@ -1,0 +1,114 @@
+name: App Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Marketing version (e.g. 1.2)"
+        required: true
+        default: "1.2"
+      build_number:
+        description: "Build number (must be higher than the previous upload)"
+        required: true
+        default: "2"
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    name: Build, sign, and upload to App Store Connect
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Import Apple Distribution certificate
+        env:
+          P12_BASE64: ${{ secrets.APP_STORE_CERT_P12 }}
+          P12_PASSWORD: ${{ secrets.APP_STORE_CERT_PASSWORD }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/appstore.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/appstore.keychain-db"
+
+          echo "$P12_BASE64" | base64 --decode > "$CERT_PATH"
+          echo "→ Certificate size: $(wc -c < "$CERT_PATH") bytes"
+
+          security create-keychain -p "" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "" "$KEYCHAIN_PATH"
+
+          security import "$CERT_PATH" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productbuild \
+            -f pkcs12
+
+          security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"' | xargs)
+          security default-keychain -s "$KEYCHAIN_PATH"
+
+          echo "→ Available signing identities:"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -1 | awk -F'"' '{print $2}')
+          echo "→ Using identity: $SIGNING_IDENTITY"
+          echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Set version and build number
+        run: |
+          /usr/libexec/PlistBuddy \
+            -c "Set :CFBundleShortVersionString ${{ github.event.inputs.version }}" \
+            Memo.app/Contents/Info.plist
+          /usr/libexec/PlistBuddy \
+            -c "Set :CFBundleVersion ${{ github.event.inputs.build_number }}" \
+            Memo.app/Contents/Info.plist
+          echo "→ Version: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Memo.app/Contents/Info.plist)"
+          echo "→ Build:   $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Memo.app/Contents/Info.plist)"
+
+      - name: Build release
+        run: swift build -c release
+
+      - name: Package app bundle
+        run: bash scripts/package-app.sh
+
+      - name: Sign with Apple Distribution certificate
+        run: |
+          security unlock-keychain -p "" "$RUNNER_TEMP/appstore.keychain-db"
+
+          codesign --force --deep --options runtime \
+            --sign "$SIGNING_IDENTITY" \
+            --keychain "$RUNNER_TEMP/appstore.keychain-db" \
+            --entitlements Memo.entitlements \
+            Memo.app
+
+          echo "→ Verifying app signature"
+          codesign --verify --verbose Memo.app
+
+      - name: Create installer package
+        run: |
+          security unlock-keychain -p "" "$RUNNER_TEMP/appstore.keychain-db"
+          bash scripts/package-pkg.sh \
+            "${{ github.event.inputs.version }}" \
+            "$SIGNING_IDENTITY"
+
+      - name: Upload to App Store Connect
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
+        run: |
+          mkdir -p ~/.private_keys
+          echo "$ASC_KEY_P8" > ~/.private_keys/AuthKey_${ASC_KEY_ID}.p8
+
+          VERSION="${{ github.event.inputs.version }}"
+          echo "→ Uploading Memo-v${VERSION}.pkg to App Store Connect"
+
+          xcrun altool --upload-app \
+            --file "Memo-v${VERSION}.pkg" \
+            --type macos \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            --verbose
