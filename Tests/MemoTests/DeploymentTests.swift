@@ -58,7 +58,7 @@ final class DeploymentTests: XCTestCase {
         let plist = try PropertyListSerialization.propertyList(from: data, format: nil)
         let dict = try XCTUnwrap(plist as? [String: Any])
 
-        XCTAssertEqual(dict["CFBundleIdentifier"] as? String, "com.memo.app")
+        XCTAssertEqual(dict["CFBundleIdentifier"] as? String, "com.amadoug2g.memo")
         XCTAssertEqual(dict["CFBundleName"] as? String, "Memo")
         XCTAssertEqual(dict["CFBundleExecutable"] as? String, "Memo")
         XCTAssertEqual(dict["LSUIElement"] as? Bool, true,
