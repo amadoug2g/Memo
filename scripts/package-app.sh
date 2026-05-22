@@ -17,10 +17,13 @@ chmod +x "$MACOS/Memo"
 
 cp -r "$REPO/.build/release/Memo_Memo.bundle" "$RESOURCES/"
 
-BUNDLE_PLIST="$RESOURCES/Memo_Memo.bundle/Contents/Info.plist"
-if [ -f "$BUNDLE_PLIST" ]; then
+BUNDLE_PLIST=$(find "$RESOURCES/Memo_Memo.bundle" -maxdepth 2 -name "Info.plist" 2>/dev/null | head -1)
+if [ -n "$BUNDLE_PLIST" ]; then
   /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string com.amadoug2g.memo.resources" "$BUNDLE_PLIST" 2>/dev/null \
     || /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.amadoug2g.memo.resources" "$BUNDLE_PLIST"
+  echo "  → Injected CFBundleIdentifier into Memo_Memo.bundle"
+else
+  echo "  → Warning: No Info.plist found in Memo_Memo.bundle"
 fi
 
 ICNS="$RESOURCES/AppIcon.icns"
