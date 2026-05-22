@@ -15,24 +15,11 @@ class PasteService {
         guard !text.isEmpty else { return }
 
         let pasteboard = NSPasteboard.general
-
-        // Save current clipboard contents
-        let savedChangeCount = pasteboard.changeCount
-        let savedItems = pasteboard.pasteboardItems?.compactMap { item -> [NSPasteboard.PasteboardType: Data] in
-            var dict = [NSPasteboard.PasteboardType: Data]()
-            for type in item.types {
-                if let data = item.data(forType: type) {
-                    dict[type] = data
-                }
-            }
-            return dict
-        } ?? []
-
-        // Set our text
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
 
-        // Simulate ⌘V
+        // Simulate ⌘V into the frontmost app.
+        // The text stays in the clipboard so the user can paste again if needed.
         guard let source = CGEventSource(stateID: .hidSystemState) else { return }
         let vKeyCode: CGKeyCode = 9  // 'v'
 
@@ -43,20 +30,5 @@ class PasteService {
         let up = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: false)
         up?.flags = .maskCommand
         up?.post(tap: .cghidEventTap)
-
-        // Restore the previous clipboard after a short delay
-        // (the target app needs time to read the paste).
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            // Only restore if nobody else has changed the clipboard
-            guard pasteboard.changeCount == savedChangeCount + 1 else { return }
-            pasteboard.clearContents()
-            for itemDict in savedItems {
-                let item = NSPasteboardItem()
-                for (type, data) in itemDict {
-                    item.setData(data, forType: type)
-                }
-                pasteboard.writeObjects([item])
-            }
-        }
     }
 }

@@ -65,13 +65,28 @@ class AudioRecorder: NSObject, AVAudioRecorderDelegate, AudioRecording {
     }
 
     static func requestPermission(completion: @escaping (Bool) -> Void) {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            completion(true)
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .audio, completionHandler: completion)
-        default:
-            completion(false)
+        if #available(macOS 14, *) {
+            switch AVAudioApplication.shared.recordPermission {
+            case .granted:
+                completion(true)
+            case .undetermined:
+                AVAudioApplication.requestRecordPermission { granted in
+                    completion(granted)
+                }
+            case .denied:
+                completion(false)
+            @unknown default:
+                completion(false)
+            }
+        } else {
+            switch AVCaptureDevice.authorizationStatus(for: .audio) {
+            case .authorized:
+                completion(true)
+            case .notDetermined:
+                AVCaptureDevice.requestAccess(for: .audio, completionHandler: completion)
+            default:
+                completion(false)
+            }
         }
     }
 
@@ -88,7 +103,13 @@ class AudioRecorder: NSObject, AVAudioRecorderDelegate, AudioRecording {
     // MARK: - Recording
 
     func startRecording() throws {
-        guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
+        let isGranted: Bool
+        if #available(macOS 14, *) {
+            isGranted = AVAudioApplication.shared.recordPermission == .granted
+        } else {
+            isGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+        }
+        guard isGranted else {
             throw AudioRecorderError.permissionDenied
         }
 

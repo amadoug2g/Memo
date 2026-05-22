@@ -201,6 +201,10 @@ class AppState: ObservableObject {
             )
             transcribedText = text
 
+            // Always copy to clipboard so the user can ⌘V at any time.
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+
             // Persist to history regardless of auto-paste setting.
             let entry = TranscriptionEntry(
                 text: text,
