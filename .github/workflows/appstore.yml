@@ -1,16 +1,20 @@
 name: App Store
 
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'memory/**'
+      - 'docs/**'
   workflow_dispatch:
     inputs:
       version:
-        description: "Marketing version (e.g. 1.2)"
-        required: true
-        default: "1.2"
+        description: "Marketing version override (default: read from Info.plist)"
+        required: false
       build_number:
-        description: "Build number (must be higher than the previous upload)"
-        required: true
-        default: "2"
+        description: "Build number override (default: github.run_number)"
+        required: false
 
 permissions:
   contents: read
@@ -22,6 +26,8 @@ jobs:
   build:
     name: "Stage 1 — Build"
     runs-on: macos-14
+    outputs:
+      version: ${{ steps.set-version.outputs.version }}
 
     steps:
       - name: Checkout
@@ -45,14 +51,29 @@ jobs:
           restore-keys: spm-${{ runner.os }}-xcode162-
 
       - name: Set version and build number
+        id: set-version
         run: |
+          VERSION="${{ github.event.inputs.version }}"
+          BUILD="${{ github.event.inputs.build_number }}"
+
+          if [ -z "$VERSION" ]; then
+            VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Memo.app/Contents/Info.plist)
+          fi
+          if [ -z "$BUILD" ]; then
+            BUILD="${{ github.run_number }}"
+          fi
+
           /usr/libexec/PlistBuddy \
-            -c "Set :CFBundleShortVersionString ${{ github.event.inputs.version }}" \
+            -c "Set :CFBundleShortVersionString $VERSION" \
             Memo.app/Contents/Info.plist
           /usr/libexec/PlistBuddy \
-            -c "Set :CFBundleVersion ${{ github.event.inputs.build_number }}" \
+            -c "Set :CFBundleVersion $BUILD" \
             Memo.app/Contents/Info.plist
-          echo "→ Version: ${{ github.event.inputs.version }} (build ${{ github.event.inputs.build_number }})"
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$BUILD" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "→ Version: $VERSION (build $BUILD)"
 
       - name: Inject Xcode build metadata into Info.plist
         run: |
@@ -232,7 +253,7 @@ jobs:
         run: |
           security unlock-keychain -p "" "$RUNNER_TEMP/appstore.keychain-db"
           bash scripts/package-pkg.sh \
-            "${{ github.event.inputs.version }}" \
+            "${{ needs.build.outputs.version }}" \
             "$INSTALLER_SIGNING_IDENTITY" \
             "$RUNNER_TEMP/appstore.keychain-db"
 
@@ -240,7 +261,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Memo-pkg
-          path: Memo-v${{ github.event.inputs.version }}.pkg
+          path: Memo-v${{ needs.build.outputs.version }}.pkg
           retention-days: 1
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -248,7 +269,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   upload:
     name: "Stage 3 — Upload to TestFlight"
-    needs: sign-and-package
+    needs: [build, sign-and-package]
     runs-on: macos-14
 
     steps:
@@ -266,7 +287,7 @@ jobs:
           mkdir -p ~/.private_keys
           echo "$ASC_KEY_P8" > ~/.private_keys/AuthKey_${ASC_KEY_ID}.p8
 
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="${{ needs.build.outputs.version }}"
           echo "→ Uploading Memo-v${VERSION}.pkg to App Store Connect"
 
           xcrun altool --upload-app \

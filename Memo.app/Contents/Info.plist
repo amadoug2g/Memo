@@ -30,5 +30,7 @@
     <string>AppIcon</string>
     <key>NSAccessibilityUsageDescription</key>
     <string>Memo uses Accessibility access to register a global keyboard shortcut and to paste transcribed text into the active application using simulated keyboard input. It does not monitor or record your keystrokes.</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>
