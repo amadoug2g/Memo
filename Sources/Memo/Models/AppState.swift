@@ -50,7 +50,7 @@ class AppState: ObservableObject {
     @Published var audioLevel: Float = 0.0
 
     // Preferences
-    @Published var recordingMode: RecordingMode = .pushToTalk
+    @Published var recordingMode: RecordingMode = .toggle
     @Published var autoPasteEnabled: Bool = false
     @Published var selectedLanguage: String = "auto"
     @Published var openAIApiKey: String = ""
@@ -215,8 +215,8 @@ class AppState: ObservableObject {
             if autoPasteEnabled {
                 confirmAndPaste()
             } else {
-                transition(to: .editing)
-                announce("Transcription ready for review")
+                announce("Transcription copied to clipboard")
+                reset()
             }
         } catch {
             transition(to: .error(error.localizedDescription))

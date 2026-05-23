@@ -99,6 +99,7 @@ final class AppStateTests: XCTestCase {
     func test_minDurationCancel_returnsToIdle() async {
         let recorder = MockAudioRecorder()
         let state = AppState(audioRecorder: recorder, transcriber: MockTranscriber())
+        state.recordingMode = .pushToTalk
         state.openAIApiKey = "sk-test"
 
         state.startRecording()
@@ -111,7 +112,7 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(recorder.stopCallCount, 0)
     }
 
-    func test_fullCoreLoop_recordingToEditing() async {
+    func test_fullCoreLoop_recordingToClipboard() async {
         let recorder = MockAudioRecorder()
         let transcriber = MockTranscriber()
         transcriber.result = .success("Transcribed text")
@@ -125,9 +126,10 @@ final class AppStateTests: XCTestCase {
         state.recordingStartedAt = Date().addingTimeInterval(-1)
         state.stopRecording()
 
-        await waitForState(.editing, on: state)
-        XCTAssertEqual(state.transcribedText, "Transcribed text")
+        await waitForState(.idle, on: state)
         XCTAssertEqual(transcriber.callCount, 1)
+        let clipboard = NSPasteboard.general.string(forType: .string)
+        XCTAssertEqual(clipboard, "Transcribed text")
     }
 
     func test_transcription_alwaysCopiesTextToClipboard() async {
@@ -136,14 +138,14 @@ final class AppStateTests: XCTestCase {
         transcriber.result = .success("clipboard test")
         let state = AppState(audioRecorder: recorder, transcriber: transcriber)
         state.openAIApiKey = "sk-test"
-        state.autoPasteEnabled = false  // ensure we're in editing flow, not auto-paste
+        state.autoPasteEnabled = false
 
         state.startRecording()
         await waitForState(.recording, on: state)
         state.recordingStartedAt = Date().addingTimeInterval(-1)
         state.stopRecording()
 
-        await waitForState(.editing, on: state)
+        await waitForState(.idle, on: state)
 
         let clipboard = NSPasteboard.general.string(forType: .string)
         XCTAssertEqual(clipboard, "clipboard test", "Transcribed text must always be copied to clipboard")
