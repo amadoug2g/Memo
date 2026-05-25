@@ -1,4 +1,4 @@
-# Sprint 5 — Ship to Users
+# Sprint 5 — Ship to Users (J0 Snapshot)
 **Dates :** 26 mai -> 1 juin 2026 (1 semaine)
 **Sprint Goal :** Fix CI, complete onboarding, restructure CI/CD pipeline, and close the stale PR. Stabilize the app for real users.
 
@@ -49,3 +49,12 @@
 | 35 | French localization | feat, backlog | Sprint 6+ |
 | 54 | Mac App Store | feat, backlog | Sprint 6+ |
 | 57 | Sparkle auto-updates | feat, backlog | Sprint 6+ |
+
+---
+
+## Lessons from Sprint 4
+
+- Max 3 DoD items per sprint (Sprint 4 had 4, only 2 delivered)
+- Formally re-scope when priorities shift mid-sprint
+- Close stale PRs immediately when work merges via alternate path
+- Keep DAILY_GOAL.md updated throughout the sprint, not just J1
