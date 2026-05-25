@@ -6,7 +6,7 @@
 
 ## Definition of Done
 
-- [ ] Fix CI green (#60) -- Swift tests + SwiftLint passing on macOS-14
+- [x] Fix CI green (#60) -- Swift tests + SwiftLint passing on macOS-14
 - [ ] CI/CD pipeline split into stages (#53) -- each job = one responsibility
 - [ ] Onboarding flow (#56) -- first-launch wizard
 - [ ] Stale PR #63 closed
@@ -17,7 +17,7 @@
 
 | Jour | Objectif | Issue | Statut |
 |------|----------|-------|--------|
-| J1 -- 26/05 | Fix CI -- get Swift tests + SwiftLint green | #60 | A faire |
+| J1 -- 26/05 | Fix CI -- get Swift tests + SwiftLint green | #60 | Done |
 | J2 -- 27/05 | CI/CD pipeline split -- restructure release.yml into stages | #53 | A faire |
 | J3 -- 28/05 | Onboarding flow -- first-launch wizard (part 1) | #56 | A faire |
 | J4 -- 29/05 | Onboarding flow -- permissions + guided first recording (part 2) | #56 | A faire |
