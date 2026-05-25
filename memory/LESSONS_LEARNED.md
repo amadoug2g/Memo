@@ -49,6 +49,18 @@ Les entrees marquees `[promote]` sont candidates pour le template `ai-project-la
 **Decision/Rule:** (1) Always pin Xcode version in CI via `xcode-select`. (2) Include Xcode version in the SPM cache key so runner image updates automatically bust the cache. (3) A build failure in <20 seconds almost always means toolchain mismatch or cache corruption, not a code error.
 **Outcome:** Fixed in ci.yml. Xcode 16.2 pinned, cache key includes `xcode162` prefix. All 4 check runs green.
 
+## Antipattern: Sprint DoD trop ambitieux — 2026-05-25 — manager [promote]
+**Context:** Sprint 4 avait 4 items DoD (AI post-processing, Local Whisper, CI/CD split, Onboarding) pour 5 jours.
+**Observation:** Seuls 2/4 items livres (50%). Le sprint a pivote mid-week vers App Store (#54, non planifie), laissant 2 items non commences. Le DoD n'a pas ete formellement mis a jour pour refleter le changement de priorite.
+**Decision/Rule:** Max 3 items DoD par sprint. Si un pivot mid-sprint se produit, mettre a jour SPRINT_CURRENT.md immediatement pour refleter la realite. Les items deprioritises deviennent "Reporte" (pas "A faire").
+**Outcome:** Sprint 5 planifie avec 3 DoD items + 1 cleanup (fermer PR #63).
+
+## Antipattern: PR orpheline non fermee — 2026-05-25 — manager
+**Context:** PR #63 (AI post-processing) creee le 20/05. Le travail a ete merge via d'autres commits/PRs.
+**Observation:** La PR est restee ouverte 5 jours apres que le code a ete merge par un chemin alternatif. Cree de la confusion sur l'etat reel du projet.
+**Decision/Rule:** Quand du travail est merge via un chemin alternatif a la PR originale, fermer la PR immediatement avec un commentaire expliquant que le travail est inclus dans main.
+**Outcome:** PR #63 identifiee pour fermeture dans Sprint 5 J1.
+
 ## Antipattern: Branches orphelines sans auto-merge — 2026-04-16 — human [promote]
 **Context:** Routines agents qui creent des PRs sans les merger.
 **Observation:** Sans auto-merge dans le reviewer, les branches s'accumulent (6 branches apres 2 jours). L'humain doit intervenir pour merger -> casse l'autonomie du systeme.

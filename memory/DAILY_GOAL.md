@@ -1,36 +1,31 @@
-# Objectif du jour — 2026-05-19 (Sprint 4, J1)
-**Issue GitHub :** #55
+# Objectif du jour -- 2026-05-26 (Sprint 5, J1)
+**Issue GitHub :** #60
 
 ## Contexte sprint
-Sprint 4 goal : Ship AI post-processing + local Whisper + CI refactor + onboarding.
+Sprint 5 goal : Fix CI, complete onboarding, restructure CI/CD pipeline. Stabilize for real users.
 
-## Tâche
-Implémenter le service `PostProcessor` et l'UI settings pour le post-traitement AI (#55, jour 1/2).
+## Tache
+Corriger le CI pour que les deux jobs (Swift Tests + SwiftLint) passent au vert sur macOS-14.
 
-Créer :
-1. `Sources/Memo/Services/PostProcessor.swift` — protocole `PostProcessing` + implémentation
-   - Envoie le texte transcrit + un prompt système à Claude API ou OpenAI API
-   - Retourne le texte post-traité
-   - Support des deux APIs (choix dans settings)
-2. `Sources/Memo/Views/SettingsView.swift` — ajouter section "Post-processing" :
-   - Dropdown de prompts prédéfinis (clean grammar, formal French, translate to English, bullet points, email format)
-   - Champ texte pour prompt custom
-   - Toggle enable/disable
-   - Sélecteur API (Claude / OpenAI)
-   - Champ clé API secondaire (si différente de Whisper)
-3. Tests : `Tests/MemoTests/PostProcessorTests.swift` avec mock LLM
+Issue #60 documente le probleme : le pipeline CI (`ci.yml`) a deux jobs -- Swift Tests (build + test sur macos-14, Xcode 16.2, keychain de test) et SwiftLint. Le dernier fix connu (commit ae6be28) pin Xcode et bust le cache SPM, mais l'etat actuel doit etre verifie.
 
-## Critères de succès
-- [ ] `PostProcessor` service créé avec protocole injectable
-- [ ] Settings UI avec prompts prédéfinis + custom
-- [ ] Toggle enable/disable dans les settings
-- [ ] Tests avec mock (au moins 4 tests)
-- [ ] `make test` passe
+Actions :
+1. Lire `.github/workflows/ci.yml` et verifier la config (Xcode pin, cache key, keychain setup)
+2. Verifier si les derniers runs CI sur main sont verts ou rouges via MCP GitHub
+3. Si rouge : diagnostiquer la root cause (stale cache, Xcode version, test failures, lint violations)
+4. Appliquer le fix necessaire
+5. Verifier que le fix passe en CI (PR + branch protection)
 
-## Fichiers concernés
-- `Sources/Memo/Services/PostProcessor.swift` — à créer
-- `Sources/Memo/Views/SettingsView.swift` — à modifier (nouvelle section)
-- `Tests/MemoTests/PostProcessorTests.swift` — à créer
+## Criteres de succes
+- [ ] Job `test` passe au vert sur macOS-14
+- [ ] Job `lint` passe au vert
+- [ ] PR mergeable (branch protection satisfied)
+- [ ] `make test` passe localement si Swift disponible
 
-## Priorité
-**Haute** — Feature revenue (#55). J1 de Sprint 4.
+## Fichiers concernes
+- `.github/workflows/ci.yml` -- configuration CI principale
+- `Package.swift` -- dependances SPM (cache key)
+- `Tests/MemoTests/` -- tests potentiellement en echec
+
+## Priorite
+**Haute** -- CI casse = bloquant numero 1 (regle de priorisation #1). Aucun autre travail ne peut etre merge tant que CI est rouge.

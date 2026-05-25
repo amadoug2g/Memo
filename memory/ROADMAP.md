@@ -30,14 +30,24 @@
 
 ---
 
-## Sprint 4 — 19-25 mai 2026 : Features + Revenue Prep
+### Sprint 4 — 19-25 mai 2026 : Features + Revenue Prep
+- [x] **AI post-processing** (#55) — speak messy -> get polished text via Claude/GPT (revenue feature)
+- [x] **Local Whisper** (#32) — WhisperKit offline transcription (free tier)
+- [x] **App Store pipeline** (#54 partial) — appstore.yml build/sign/notarize/upload (13 PRs)
+- [x] **Toggle recording mode** (#79) — push-to-talk + toggle modes
+- [x] **Auto-merge CI** (#80) + **French landing page** (#81)
+- [ ] ~~Onboarding flow (#56)~~ — carried over to Sprint 5
+- [ ] ~~CI/CD split into stages (#53)~~ — carried over to Sprint 5
 
-- [ ] **AI post-processing** (#55) — speak messy → get polished text via Claude/GPT (revenue feature)
-- [ ] **Local Whisper** (#32) — WhisperKit offline transcription (free tier)
-- [ ] **Onboarding flow** (#56) — first-launch wizard
+---
+
+## Sprint 5 — 26 mai - 1 juin 2026 : Ship to Users
+
+- [ ] **Fix CI** (#60) — get Swift tests + SwiftLint green (BLOQUANT)
 - [ ] **CI/CD split into stages** (#53) — proper pipeline architecture
+- [ ] **Onboarding flow** (#56) — first-launch wizard
 
-## Sprint 5+ — June-July 2026 : Ship to Users
+## Sprint 6+ — June-July 2026 : Polish + Distribution
 
 - [ ] **Prompt prefixes** (#31) — Whisper prompt parameter
 - [ ] **Mac App Store** (#54) — listing, screenshots, privacy policy, submit
