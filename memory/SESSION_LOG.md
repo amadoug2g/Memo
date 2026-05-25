@@ -12,6 +12,12 @@ Format par entrée :
 
 ---
 
+## 2026-05-25 — Sprint 5 J1 — Fix CI green (#60) — Review (reviewer)
+- Objectif: Corriger les actions GitHub non existantes (`checkout@v6`, `configure-pages@v6`) qui bloquaient tous les jobs CI
+- Statut: LGTM
+- Tests: Swift non disponible sur Linux — aucune modification de code Swift ; changements YAML uniquement
+- Notes: 7 occurrences de `actions/checkout@v6` remplacées par `@v4` et 1 occurrence de `actions/configure-pages@v6` remplacée par `@v5` dans ci.yml, release.yml, pages.yml, appstore.yml. Root cause correctement identifiée : actions inexistantes causaient un échec immédiat au step Checkout. Toutes les versions d'actions dans les 4 fichiers sont maintenant des versions stables connues. Aucun résidu `@v6`.
+
 ## 2026-05-25 — Weekly Strategic Review (manager)
 - Objectif: Revue strategique hebdomadaire — cloture Sprint 4, lancement Sprint 5
 - Statut: Review completee

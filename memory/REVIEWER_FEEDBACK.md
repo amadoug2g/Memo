@@ -1,36 +1,37 @@
 Itération: 1
 Statut: LGTM
 
-Session 2026-05-19 — PostProcessor service + settings UI pour AI post-processing (#55, J1)
+Session 2026-05-25 — Sprint 5 J1 — Fix CI green (#60)
 
 ## Evaluation
 
 ### Correctness
-- PostProcessor.swift : protocole PostProcessing injectable, enums PostProcessingPrompt (6 presets) et PostProcessingAPI (openAI/claude) conformes Identifiable/CaseIterable, implémentation concrète avec callOpenAI (gpt-4o-mini) et callClaude (claude-haiku-4-5), validation apiKey et prompt avant tout appel réseau, gestion httpError/emptyResponse/emptyPrompt correcte.
-- PreferencesStore.swift : 5 champs post-processing ajoutés (enabled, api, prompt, customPrompt, apiKey), load/save étendu correctement, postProcessingAPIKey via Keychain (save/delete symétrique).
-- AppState.swift : 5 @Published vars ajoutés, chargement UserDefaults dans init (loadFast), Keychain en Task @MainActor différé, savePreferences() étendu avec tous les champs.
-- SettingsView.swift : section "Post-processing" complète — toggle enable/disable, Picker prompts prédéfinis, TextField prompt custom conditionnel (affiché uniquement si .custom sélectionné), Picker API segmented, SecureField clé API secondaire, loadFromAppState() et save() câblés pour tous les champs post-processing.
+Tous les `actions/checkout@v6` remplacés par `@v4` dans les 4 fichiers YAML concernés :
+- ci.yml : 2 occurrences (jobs `test` et `lint`) — corrigées
+- release.yml : 2 occurrences (jobs `build-and-release` et `smoke-test`) — corrigées
+- pages.yml : 1 occurrence checkout + 1 occurrence `actions/configure-pages@v6` → `@v5` — corrigées
+- appstore.yml : 2 occurrences (jobs `build` et `sign-and-package`) — corrigées
+
+Aucun `@v6` résiduel dans aucun des 4 fichiers. Diff vérifié ligne à ligne.
 
 ### Sprint Alignment
-Contribue directement à l'objectif Sprint 4 "AI post-processing (#55)" — J1 entièrement couverte.
+Contribue directement à l'objectif Sprint 5 J1 "Fix CI green (#60)" — root cause identifiée et corrigée (actions inexistantes causaient un échec immédiat au step Checkout sur chaque run CI).
 
-### Security
-- Aucune clé API en dur dans le code source.
-- postProcessingAPIKey stockée via KeychainService (clé "postProcessingAPIKey"), supprimée si vide — pattern identique à openAIApiKey.
-- URLSession.ephemeral utilisé (pas de cache disque).
+### Cohérence des versions d'actions
+Toutes les actions dans les 4 fichiers utilisent des versions stables connues :
+- actions/checkout@v4 (latest stable)
+- actions/cache@v5
+- actions/configure-pages@v5
+- actions/upload-pages-artifact@v5
+- actions/deploy-pages@v5
+- actions/upload-artifact@v4
+- actions/download-artifact@v4
+- softprops/action-gh-release@v3
 
-### Swift Idioms
-- @MainActor correct sur AppState et tâche Keychain différée.
-- async/await utilisé correctement dans PostProcessor.process().
-- Pas de force-unwrap dangereux (guard let/if let systématique).
-- preconditionFailure() sur URL invalide (URL statique connue au compile time — acceptable).
+Aucune incohérence de version détectée. Aucun autre bug de version présent.
 
 ### Tests
-12 tests couvrent : mock protocol, forwarding inputs, error propagation, enum uniqueness (labels), error descriptions, validation missingAPIKey (vide et whitespace), emptyPrompt (vide et whitespace), preset systemPrompts non vides. Critère ≥ 4 tests largement dépassé.
+Swift non disponible dans l'environnement Linux — `make test` non exécutable. Aucune modification de code Swift effectuée. Les changements sont purement dans les fichiers YAML de configuration CI/CD. Vérification logique complète par lecture des diffs.
 
-### Make test
-Swift non disponible dans l'environnement Linux — cohérent avec toutes les sessions précédentes. Code vérifié syntaxiquement et logiquement via lecture.
-
-## Suggestions (non-bloquantes)
-1. La méthode process() sur le protocole prend `prompt: String` (le systemPrompt résolu par l'appelant). J2 devra veiller à passer postProcessingPrompt.systemPrompt (ou postProcessingCustomPrompt pour .custom) et non le rawValue de l'enum — documenter ce point dans AppState lors du câblage J2.
-2. callClaude utilise "claude-haiku-4-5" — à vérifier lors de la mise en production que ce model ID correspond bien au modèle live Anthropic (peut varier selon les déploiements).
+### Swift Idioms / Sécurité / Sandbox
+Sans objet — aucune modification de code Swift.
