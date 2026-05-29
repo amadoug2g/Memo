@@ -8,18 +8,21 @@ let package = Package(
         .macOS(.v13)
     ],
     dependencies: [
-        // WhisperKit: Apple-native on-device speech recognition (Apple Silicon + CoreML).
-        // Used by LocalWhisperService for offline transcription fallback.
         .package(
             url: "https://github.com/argmaxinc/WhisperKit.git",
             from: "0.9.0"
+        ),
+        .package(
+            url: "https://github.com/getsentry/sentry-cocoa.git",
+            from: "8.40.0"
         )
     ],
     targets: [
         .target(
             name: "Memo",
             dependencies: [
-                .product(name: "WhisperKit", package: "WhisperKit", condition: .when(platforms: [.macOS]))
+                .product(name: "WhisperKit", package: "WhisperKit", condition: .when(platforms: [.macOS])),
+                .product(name: "Sentry", package: "sentry-cocoa")
             ],
             path: "Sources/Memo",
             resources: [

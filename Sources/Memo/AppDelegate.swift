@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Combine
+import Sentry
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -21,6 +22,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Launch
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        SentrySDK.start { options in
+            options.dsn = "https://455f6e75aceeb74763b1784d31843d98@o4511474074058752.ingest.de.sentry.io/4511474086117456"
+            options.enableAppHangTracking = true
+            options.appHangTimeoutInterval = 5
+            options.sendDefaultPii = false
+            #if DEBUG
+            options.enabled = false
+            #endif
+        }
+
         NSApp.setActivationPolicy(.accessory)
         appState.pasteOrchestrator = self
         setupHotkey()
