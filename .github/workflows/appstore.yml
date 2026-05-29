@@ -121,7 +121,7 @@ jobs:
         run: tar -czf Memo.app.tar.gz Memo.app
 
       - name: Upload app bundle artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Memo-app
           path: Memo.app.tar.gz
@@ -258,7 +258,7 @@ jobs:
             "$RUNNER_TEMP/appstore.keychain-db"
 
       - name: Upload installer package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Memo-pkg
           path: Memo-v${{ needs.build.outputs.version }}.pkg
