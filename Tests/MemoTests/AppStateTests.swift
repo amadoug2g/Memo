@@ -216,16 +216,17 @@ final class AppStateTests: XCTestCase {
         state.openAIApiKey = "sk-test"
         state.postProcessingEnabled = true
         state.postProcessingPrompt = .cleanGrammar
-        // resolvedPostProcessingAPIKey falls back to openAIApiKey when postProcessingAPIKey is empty
 
         state.startRecording()
         await waitForState(.recording, on: state)
         state.recordingStartedAt = Date().addingTimeInterval(-1)
         state.stopRecording()
 
-        await waitForState(.editing, on: state)
+        // Toggle mode goes transcribing → idle (skips editing panel), so wait for idle.
+        await waitForState(.idle, on: state)
         XCTAssertEqual(postProcessor.callCount, 1, "PostProcessor must be called once")
-        XCTAssertEqual(state.transcribedText, "Hello world.", "Transcription must be post-processed")
+        let pasted = NSPasteboard.general.string(forType: .string)
+        XCTAssertEqual(pasted, "Hello world.", "Post-processed text must be on the pasteboard")
     }
 
     func test_autoPostProcessing_skippedWhenDisabled() async {
@@ -246,9 +247,10 @@ final class AppStateTests: XCTestCase {
         state.recordingStartedAt = Date().addingTimeInterval(-1)
         state.stopRecording()
 
-        await waitForState(.editing, on: state)
+        await waitForState(.idle, on: state)
         XCTAssertEqual(postProcessor.callCount, 0, "PostProcessor must NOT be called when disabled")
-        XCTAssertEqual(state.transcribedText, "raw text")
+        let pasted = NSPasteboard.general.string(forType: .string)
+        XCTAssertEqual(pasted, "raw text")
     }
 
     func test_applyPostProcessing_updatesTranscribedText() async {
@@ -298,7 +300,7 @@ final class AppStateTests: XCTestCase {
         state.recordingStartedAt = Date().addingTimeInterval(-1)
         state.stopRecording()
 
-        await waitForState(.editing, on: state)
+        await waitForState(.idle, on: state)
         XCTAssertEqual(postProcessor.lastAPI, .claude, "AppState must pass postProcessingAPI to the processor")
     }
 
