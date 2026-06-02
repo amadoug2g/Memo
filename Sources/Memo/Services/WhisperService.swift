@@ -12,6 +12,7 @@ enum WhisperError: LocalizedError {
     case missingAPIKey
     case httpError(Int, String)
     case emptyResponse
+    case timeout
 
     var errorDescription: String? {
         switch self {
@@ -25,6 +26,8 @@ enum WhisperError: LocalizedError {
             return "API error \(code): \(body)"
         case .emptyResponse:
             return "The API returned an empty transcription."
+        case .timeout:
+            return "Transcription timed out — the server took too long to respond. Please try again."
         }
     }
 }
@@ -42,13 +45,22 @@ class WhisperService: Transcribing {
         return url
     }()
 
-    /// Ephemeral session: no disk cache, no persistent credential storage.
-    private let session: URLSession = {
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest  = 30
-        config.timeoutIntervalForResource = 90
-        return URLSession(configuration: config)
-    }()
+    private let session: URLSession
+    private let maxAttempts: Int
+    private let baseRetryDelay: TimeInterval
+
+    init(session: URLSession? = nil, maxAttempts: Int = 3, baseRetryDelay: TimeInterval = 2.0) {
+        if let session {
+            self.session = session
+        } else {
+            let config = URLSessionConfiguration.ephemeral
+            config.timeoutIntervalForRequest  = 120
+            config.timeoutIntervalForResource = 300
+            self.session = URLSession(configuration: config)
+        }
+        self.maxAttempts = maxAttempts
+        self.baseRetryDelay = baseRetryDelay
+    }
 
     func transcribe(audioURL: URL, apiKey: String, language: String?) async throws -> String {
         guard !apiKey.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -60,7 +72,6 @@ class WhisperService: Transcribing {
 
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
-        request.timeoutInterval = 30
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.httpBody = buildMultipartBody(
@@ -70,17 +81,39 @@ class WhisperService: Transcribing {
             boundary: boundary
         )
 
-        let (data, response) = try await session.data(for: request)
+        var lastError: Error = WhisperError.timeout
+        for attempt in 1...maxAttempts {
+            do {
+                let (data, response) = try await session.data(for: request)
 
-        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-            throw WhisperError.httpError(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+                if let http = response as? HTTPURLResponse {
+                    if http.statusCode == 200 {
+                        let text = (String(data: data, encoding: .utf8) ?? "")
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !text.isEmpty else { throw WhisperError.emptyResponse }
+                        return text
+                    }
+                    if http.statusCode >= 500 {
+                        lastError = WhisperError.httpError(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+                        if attempt < maxAttempts {
+                            try await Task.sleep(nanoseconds: UInt64(baseRetryDelay * 1_000_000_000) * UInt64(1 << (attempt - 1)))
+                            continue
+                        }
+                        throw lastError
+                    }
+                    throw WhisperError.httpError(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+                }
+            } catch let error as WhisperError {
+                throw error
+            } catch let urlError as URLError where urlError.code == .timedOut || urlError.code == .networkConnectionLost {
+                lastError = WhisperError.timeout
+                if attempt < maxAttempts {
+                    try await Task.sleep(nanoseconds: UInt64(baseRetryDelay * 1_000_000_000) * UInt64(1 << (attempt - 1)))
+                    continue
+                }
+            }
         }
-
-        let text = (String(data: data, encoding: .utf8) ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !text.isEmpty else { throw WhisperError.emptyResponse }
-        return text
+        throw lastError
     }
 
     // MARK: - Multipart body
