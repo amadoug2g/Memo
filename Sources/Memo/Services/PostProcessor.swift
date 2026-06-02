@@ -70,6 +70,7 @@ enum PostProcessorError: LocalizedError {
     case httpError(Int, String)
     case emptyResponse
     case emptyPrompt
+    case timeout
 
     var errorDescription: String? {
         switch self {
@@ -81,6 +82,8 @@ enum PostProcessorError: LocalizedError {
             return "Post-processing returned an empty response."
         case .emptyPrompt:
             return "No system prompt provided for post-processing."
+        case .timeout:
+            return "Post-processing timed out — the server took too long to respond. Please try again."
         }
     }
 }
@@ -90,16 +93,22 @@ enum PostProcessorError: LocalizedError {
 final class PostProcessor: PostProcessing {
 
     private let api: PostProcessingAPI
+    private let session: URLSession
+    private let maxAttempts: Int
+    private let baseRetryDelay: TimeInterval
 
-    private let session: URLSession = {
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest  = 30
-        config.timeoutIntervalForResource = 90
-        return URLSession(configuration: config)
-    }()
-
-    init(api: PostProcessingAPI = .openAI) {
+    init(api: PostProcessingAPI = .openAI, session: URLSession? = nil, maxAttempts: Int = 3, baseRetryDelay: TimeInterval = 2.0) {
         self.api = api
+        if let session {
+            self.session = session
+        } else {
+            let config = URLSessionConfiguration.ephemeral
+            config.timeoutIntervalForRequest  = 120
+            config.timeoutIntervalForResource = 300
+            self.session = URLSession(configuration: config)
+        }
+        self.maxAttempts = maxAttempts
+        self.baseRetryDelay = baseRetryDelay
     }
 
     func process(text: String, prompt: String, apiKey: String) async throws -> String {
@@ -139,9 +148,8 @@ final class PostProcessor: PostProcessing {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        request.timeoutInterval = 30
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await performWithRetry(request)
 
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw PostProcessorError.httpError(http.statusCode, String(data: data, encoding: .utf8) ?? "")
@@ -187,15 +195,43 @@ final class PostProcessor: PostProcessing {
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        request.timeoutInterval = 30
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await performWithRetry(request)
 
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw PostProcessorError.httpError(http.statusCode, String(data: data, encoding: .utf8) ?? "")
         }
 
         return try extractClaudeContent(from: data)
+    }
+
+    // MARK: - Retry
+
+    private func performWithRetry(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        var lastError: Error = PostProcessorError.timeout
+        for attempt in 1...maxAttempts {
+            do {
+                let (data, response) = try await session.data(for: request)
+                if let http = response as? HTTPURLResponse, http.statusCode >= 500 {
+                    lastError = PostProcessorError.httpError(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+                    if attempt < maxAttempts {
+                        try await Task.sleep(nanoseconds: UInt64(baseRetryDelay * 1_000_000_000) * UInt64(1 << (attempt - 1)))
+                        continue
+                    }
+                    throw lastError
+                }
+                return (data, response)
+            } catch let error as PostProcessorError {
+                throw error
+            } catch let urlError as URLError where urlError.code == .timedOut || urlError.code == .networkConnectionLost {
+                lastError = PostProcessorError.timeout
+                if attempt < maxAttempts {
+                    try await Task.sleep(nanoseconds: UInt64(baseRetryDelay * 1_000_000_000) * UInt64(1 << (attempt - 1)))
+                    continue
+                }
+            }
+        }
+        throw lastError
     }
 
     private func extractClaudeContent(from data: Data) throws -> String {

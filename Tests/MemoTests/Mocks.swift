@@ -1,5 +1,51 @@
 import Foundation
+import XCTest
 @testable import Memo
+
+// MARK: - MockURLProtocol
+
+final class MockURLProtocol: URLProtocol {
+    nonisolated(unsafe) static var responses: [(error: Error?, data: Data?, statusCode: Int?)] = []
+    nonisolated(unsafe) static var requestCount = 0
+
+    static func reset() {
+        responses = []
+        requestCount = 0
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let index = min(Self.requestCount, Self.responses.count - 1)
+        Self.requestCount += 1
+        let entry = Self.responses[index]
+
+        if let error = entry.error {
+            client?.urlProtocol(self, didFailWithError: error)
+            return
+        }
+
+        let statusCode = entry.statusCode ?? 200
+        let url = request.url ?? URL(string: "https://mock.test")!
+        let httpResponse = HTTPURLResponse(url: url, statusCode: statusCode, httpVersion: "HTTP/1.1", headerFields: nil)!
+        client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
+        if let data = entry.data {
+            client?.urlProtocol(self, didLoad: data)
+        }
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+}
+
+func makeMockSession() -> URLSession {
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [MockURLProtocol.self]
+    config.timeoutIntervalForRequest = 120
+    config.timeoutIntervalForResource = 300
+    return URLSession(configuration: config)
+}
 
 // MARK: - MockAudioRecorder
 
