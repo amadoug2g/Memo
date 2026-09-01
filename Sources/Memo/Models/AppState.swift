@@ -71,11 +71,27 @@ class AppState: ObservableObject {
     // App status
     @Published var hotkeyConflict: Bool = false
 
+    /// True while an AI post-processing call is in flight (inside the editing panel).
+    @Published var isPostProcessing: Bool = false
+
     // Convenience
     var isRecording: Bool    { recordingState == .recording }
     var isTranscribing: Bool { recordingState == .transcribing }
     var isEditing: Bool      { recordingState == .editing }
     var needsSetup: Bool     { openAIApiKey.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// Resolved system prompt: postProcessingCustomPrompt when .custom, else preset's systemPrompt.
+    var resolvedPostProcessingPrompt: String {
+        postProcessingPrompt == .custom
+            ? postProcessingCustomPrompt
+            : postProcessingPrompt.systemPrompt
+    }
+
+    /// Resolved API key: postProcessingAPIKey if non-empty, otherwise falls back to openAIApiKey.
+    var resolvedPostProcessingAPIKey: String {
+        let key = postProcessingAPIKey.trimmingCharacters(in: .whitespaces)
+        return key.isEmpty ? openAIApiKey : key
+    }
 
     /// Wired by the coordinator (AppDelegate) after init to break circular dependency.
     weak var pasteOrchestrator: PasteOrchestrating?
@@ -84,6 +100,7 @@ class AppState: ObservableObject {
     private let audioRecorder: any AudioRecording
     private let whisperService: any Transcribing
     private let localWhisperService: LocalWhisperService
+    private let postProcessor: any PostProcessing
     let historyStore: any HistoryStoring
     var recordingStartedAt: Date?
 
@@ -96,11 +113,13 @@ class AppState: ObservableObject {
         audioRecorder: any AudioRecording = AudioRecorder(),
         transcriber: any Transcribing = WhisperService(),
         localWhisperService: LocalWhisperService = LocalWhisperService(),
+        postProcessor: any PostProcessing = PostProcessor(),
         historyStore: any HistoryStoring = HistoryStore()
     ) {
         self.audioRecorder = audioRecorder
         self.whisperService = transcriber
         self.localWhisperService = localWhisperService
+        self.postProcessor = postProcessor
         self.historyStore = historyStore
 
         // Load UserDefaults synchronously — fast (< 1ms), needed before first render.
@@ -194,11 +213,27 @@ class AppState: ObservableObject {
         defer { try? FileManager.default.removeItem(at: audioURL) }
 
         do {
-            let text = try await transcriber.transcribe(
+            var text = try await transcriber.transcribe(
                 audioURL: audioURL,
                 apiKey: openAIApiKey,
                 language: selectedLanguage == "auto" ? nil : selectedLanguage
             )
+
+            // Auto post-process when enabled (still in the transcribing state — transparent).
+            if postProcessingEnabled {
+                let systemPrompt = resolvedPostProcessingPrompt
+                let apiKey = resolvedPostProcessingAPIKey
+                if !systemPrompt.trimmingCharacters(in: .whitespaces).isEmpty
+                    && !apiKey.trimmingCharacters(in: .whitespaces).isEmpty {
+                    text = (try? await postProcessor.process(
+                        text: text,
+                        prompt: systemPrompt,
+                        apiKey: apiKey,
+                        api: postProcessingAPI
+                    )) ?? text
+                }
+            }
+
             transcribedText = text
 
             // Always copy to clipboard so the user can ⌘V at any time.
@@ -221,6 +256,32 @@ class AppState: ObservableObject {
         } catch {
             transition(to: .error(error.localizedDescription))
             announce(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Manual post-processing from the editing panel
+
+    /// Applies AI post-processing to the current `transcribedText` on demand.
+    /// Sets `isPostProcessing` while the call is in flight; updates `transcribedText` on success.
+    /// If the call fails, `transcribedText` is left unchanged.
+    func applyPostProcessing() {
+        guard isEditing, !isPostProcessing else { return }
+        let systemPrompt = resolvedPostProcessingPrompt
+        let apiKey = resolvedPostProcessingAPIKey
+        guard !systemPrompt.trimmingCharacters(in: .whitespaces).isEmpty,
+              !apiKey.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let inputText = transcribedText
+        isPostProcessing = true
+        Task {
+            defer { isPostProcessing = false }
+            if let result = try? await postProcessor.process(
+                text: inputText,
+                prompt: systemPrompt,
+                apiKey: apiKey,
+                api: postProcessingAPI
+            ) {
+                transcribedText = result
+            }
         }
     }
 

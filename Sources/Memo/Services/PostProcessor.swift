@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Protocol
 
 protocol PostProcessing: AnyObject {
-    func process(text: String, prompt: String, apiKey: String) async throws -> String
+    func process(text: String, prompt: String, apiKey: String, api: PostProcessingAPI) async throws -> String
 }
 
 // MARK: - Preset prompts
@@ -92,13 +92,11 @@ enum PostProcessorError: LocalizedError {
 
 final class PostProcessor: PostProcessing {
 
-    private let api: PostProcessingAPI
     private let session: URLSession
     private let maxAttempts: Int
     private let baseRetryDelay: TimeInterval
 
-    init(api: PostProcessingAPI = .openAI, session: URLSession? = nil, maxAttempts: Int = 3, baseRetryDelay: TimeInterval = 2.0) {
-        self.api = api
+    init(session: URLSession? = nil, maxAttempts: Int = 3, baseRetryDelay: TimeInterval = 2.0) {
         if let session {
             self.session = session
         } else {
@@ -111,7 +109,7 @@ final class PostProcessor: PostProcessing {
         self.baseRetryDelay = baseRetryDelay
     }
 
-    func process(text: String, prompt: String, apiKey: String) async throws -> String {
+    func process(text: String, prompt: String, apiKey: String, api: PostProcessingAPI) async throws -> String {
         guard !apiKey.trimmingCharacters(in: .whitespaces).isEmpty else {
             throw PostProcessorError.missingAPIKey
         }
