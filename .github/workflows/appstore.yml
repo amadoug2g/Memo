@@ -7,6 +7,11 @@ on:
       - '*.md'
       - 'memory/**'
       - 'docs/**'
+  schedule:
+    # Monthly rebuild on the 1st at 08:00 UTC. TestFlight builds expire 90 days
+    # after upload; a monthly build keeps a fresh, installable build available at
+    # all times so testers never lose access, with no manual re-trigger needed.
+    - cron: '0 8 1 * *'
   workflow_dispatch:
     inputs:
       version:
