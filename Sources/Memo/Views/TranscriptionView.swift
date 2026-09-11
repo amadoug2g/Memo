@@ -136,6 +136,9 @@ struct TranscriptionView: View {
 
     private var footer: some View {
         HStack(spacing: 6) {
+            if appState.postProcessingEnabled {
+                polishButton
+            }
             Spacer()
             Button("Paste") { appState.confirmAndPaste() }
                 .accessibilityLabel("Paste")
@@ -147,6 +150,37 @@ struct TranscriptionView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+    }
+
+    // MARK: - Polish button (AI post-processing on demand)
+
+    @ViewBuilder
+    private var polishButton: some View {
+        if appState.isPostProcessing {
+            HStack(spacing: 4) {
+                ProgressView()
+                    .scaleEffect(0.6)
+                    .frame(width: 14, height: 14)
+                Text("Polishing…")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel("Applying AI post-processing")
+        } else {
+            Button {
+                appState.applyPostProcessing()
+            } label: {
+                Label("Polish", systemImage: "wand.and.sparkles")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("Apply AI post-processing")
+            .accessibilityHint("Rewrites the transcription using the selected AI prompt")
+            .disabled(appState.transcribedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                      || appState.isPostProcessing)
+        }
     }
 
     // MARK: - Timer helpers

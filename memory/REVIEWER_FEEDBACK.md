@@ -1,37 +1,32 @@
-Itération: 1
-Statut: LGTM
+Itération: 2
+Statut: BLOQUANT
 
-Session 2026-05-25 — Sprint 5 J1 — Fix CI green (#60)
+Session 2026-05-20 — AI post-processing J2 : câblage PostProcessor dans AppState + bouton Polish (#55, J2)
 
-## Evaluation
+## Bug itération 1 corrigé
 
-### Correctness
-Tous les `actions/checkout@v6` remplacés par `@v4` dans les 4 fichiers YAML concernés :
-- ci.yml : 2 occurrences (jobs `test` et `lint`) — corrigées
-- release.yml : 2 occurrences (jobs `build-and-release` et `smoke-test`) — corrigées
-- pages.yml : 1 occurrence checkout + 1 occurrence `actions/configure-pages@v6` → `@v5` — corrigées
-- appstore.yml : 2 occurrences (jobs `build` et `sign-and-package`) — corrigées
+Option A appliquée correctement. `api: PostProcessingAPI` est maintenant un paramètre de `PostProcessing.process(...)` au lieu d'être stocké comme constante dans `PostProcessor`. Les call sites dans `AppState.transcribe()` et `applyPostProcessing()` passent bien `postProcessingAPI` a chaque appel. `MockPostProcessor` capture `lastAPI`. Deux nouveaux tests verifient le forwarding vers `.claude`.
 
-Aucun `@v6` résiduel dans aucun des 4 fichiers. Diff vérifié ligne à ligne.
+## Probleme bloquant : CI "Swift Tests" en echec
 
-### Sprint Alignment
-Contribue directement à l'objectif Sprint 5 J1 "Fix CI green (#60)" — root cause identifiée et corrigée (actions inexistantes causaient un échec immédiat au step Checkout sur chaque run CI).
+Fichier: PR #63 / check run https://github.com/amadoug2g/Memo/actions/runs/26156212824/job/76936164867
+Action requise: Consulter les logs CI, identifier et corriger la cause de l'echec, puis pousser le correctif sur `claude/tender-einstein-1gwQi`.
 
-### Cohérence des versions d'actions
-Toutes les actions dans les 4 fichiers utilisent des versions stables connues :
-- actions/checkout@v4 (latest stable)
-- actions/cache@v5
-- actions/configure-pages@v5
-- actions/upload-pages-artifact@v5
-- actions/deploy-pages@v5
-- actions/upload-artifact@v4
-- actions/download-artifact@v4
-- softprops/action-gh-release@v3
+Les deux runs CI declenchees par les pushes de cette branche echouent sur "Swift Tests" (conclusion: failure, duree ~22s chacune). Le code source est logiquement coherent (protocole, implementation, mocks, call sites, tests alignes sur la nouvelle signature `api: PostProcessingAPI`), mais la CI macOS-14 rejette le build ou les tests.
 
-Aucune incohérence de version détectée. Aucun autre bug de version présent.
+Hypotheses a investiguer (par ordre de probabilite) :
+1. Erreur de compilation subtile non detectable par lecture statique — consulter les logs pour le message d'erreur exact.
+2. Cache SPM contamine : la cle de cache (Package.swift + Package.resolved) n'a pas change en J2 — le runner a pu restaurer un `.build` compile contre l'ancien protocole. Correctif : ajouter un suffixe de version a la cle de cache dans `.github/workflows/ci.yml` pour invalider le cache J1.
+3. Echec runtime d'un test async sur macOS 14.
 
-### Tests
-Swift non disponible dans l'environnement Linux — `make test` non exécutable. Aucune modification de code Swift effectuée. Les changements sont purement dans les fichiers YAML de configuration CI/CD. Vérification logique complète par lecture des diffs.
+Note : c'est la 3e et derniere iteration possible. Si la CI ne passe pas apres correction, le travail sera note Abandonne dans SESSION_LOG.md et SPRINT_CURRENT.md.
 
-### Swift Idioms / Sécurité / Sandbox
-Sans objet — aucune modification de code Swift.
+## Qualite du code (hors CI — conforme aux criteres du DAILY_GOAL.md)
+
+- PostProcessor service avec protocole injectable : oui
+- Settings UI presets + custom prompt conditionnel : oui
+- Toggle enable/disable : oui
+- Tests mock >= 4 : oui (13 PostProcessorTests + 10 AppStateTests post-processing)
+- Architecture sans etat mutable dans PostProcessor (api passe a l'appel) : oui
+- Securite (cles Keychain, URLSession.ephemeral) : oui
+- Accessibility labels complets : oui
