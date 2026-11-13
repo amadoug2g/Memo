@@ -124,3 +124,18 @@ See `memory/` directory:
 - `REVIEWER_FEEDBACK.md` — reviewer's feedback when not LGTM
 
 Branching: coder creates `feature/YYYYMMDD-<slug>`, reviewer opens PR to `main`.
+
+---
+
+## Agent Limits
+
+Agents work with least privilege. The rules are versioned in the repo, so every agent session gets the same ones.
+
+| Layer | Where | What it does |
+|-------|-------|--------------|
+| Permissions | `.claude/settings.json` | Auto-approves build, test, lint, commits and pushes to `feature/*`; anything else asks a human. Denies reading `.env` and signing files, force push, push to `main`, `git reset --hard`, `rm -rf` and Keychain commands. |
+| Hook | `.claude/hooks/guard-bash.sh` | Runs before every Bash command. Blocks push to `main`, force push, history rewrites and `--no-verify`, even inside chained commands the deny list could miss. |
+| Branch protection | GitHub ruleset "Protect main" | `main` only changes through a pull request with green "Swift Tests" and "SwiftLint" checks. Force push and branch deletion are blocked. Auto-merge cannot merge a red PR. |
+| Secrets | GitHub secret scanning + push protection | A commit containing a key is rejected before it lands. The Whisper API key lives in the macOS Keychain, never in the repo. |
+
+When a rule blocks an agent, the agent stops and reports. Changing these files is a human decision, made through a reviewed pull request.
